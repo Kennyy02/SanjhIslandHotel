@@ -51,7 +51,7 @@ const ExclusiveOffers = () => {
           <div
             key={item.id}
             className="group relative flex flex-col items-start justify-between gap-1 pt-12 md:pt-18 px-4 rounded-xl text-white bg-no-repeat bg-cover bg-center"
-            style={{ backgroundImage: `url(http://localhost:4000${item.image})` }}
+            style={{ backgroundImage: `url(${BACKEND_BASE_URL}${item.image})` }}
           >
             {/* Display based on discount type */}
             {item.discountType === 'percentage' && (

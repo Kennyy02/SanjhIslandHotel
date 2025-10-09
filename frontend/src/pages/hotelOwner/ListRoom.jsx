@@ -112,7 +112,7 @@ const AddRoomModal = ({ onClose, onRoomAdded }) => {
         return;
       }
 
-      const response = await axios.post('http://localhost:4000/rooms', formData, {
+      const response = await axios.post(`${BACKEND_URL}/rooms`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           Authorization: `Bearer ${token}`,
