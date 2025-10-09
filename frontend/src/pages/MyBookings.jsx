@@ -260,7 +260,7 @@ const MyBookings = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {bookings.map((booking) => {
                         const displayImage = booking.roomImages && booking.roomImages.length > 0
-                            ? `${BACKEND_URL}${booking.roomImages[0]}`
+                            ? booking.roomImages[0]
                             : assets.placeholder_room_image;
 
                         return (

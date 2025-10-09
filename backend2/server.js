@@ -254,6 +254,17 @@ const safeParseJSON = (str, fallback) => {
         if (typeof fallback === 'object' && !Array.isArray(fallback) && (typeof parsed !== 'object' || Array.isArray(parsed))) return fallback;
         return parsed;
     } catch (e) {
+        // Handle single URL string values by wrapping them in an array when fallback expects an array
+        if (typeof str === 'string') {
+            const trimmed = str.trim();
+            const looksLikeUrl = /^https?:\/\//i.test(trimmed) || trimmed.startsWith('/uploads/');
+            if (looksLikeUrl) {
+                if (Array.isArray(fallback)) {
+                    return [trimmed];
+                }
+                return trimmed;
+            }
+        }
         // Fallback for comma-separated strings that look like paths or arrays
         if (typeof str === 'string' && str.includes('/uploads/') && str.includes(',')) {
             const result = str.split(',').map(s => s.trim());
@@ -575,17 +586,8 @@ app.get('/rooms/:id', async (req, res) => {
 
         const room = rows[0];
 
-        // If images are stored as a JSON string, parse them
-        if (room.images && typeof room.images === 'string') {
-            try {
-                room.images = JSON.parse(room.images);
-            } catch (jsonError) {
-                console.error("Error parsing room images JSON:", jsonError);
-                room.images = []; // Default to empty array on error
-            }
-        } else if (!room.images) {
-            room.images = [];
-        }
+        // Parse images robustly (supports JSON arrays or single URL strings)
+        room.images = safeParseJSON(room.images, []);
 
         // Normalize image URLs to absolute with correct base URL
         const baseUrl =
