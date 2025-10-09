@@ -291,7 +291,7 @@ useEffect(() => {
                     <div className="w-full">
                         {displayedRooms.map((room) => {
                             const imageUrl = room.images && room.images.length > 0
-                                ? `${BACKEND_BASE_URL}${room.images[0]}`
+                                ? room.images[0]
                                 : assets.placeholderRoomImage;
 
                             return (

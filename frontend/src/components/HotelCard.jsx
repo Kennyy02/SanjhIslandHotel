@@ -11,7 +11,7 @@ const HotelCard = ({ room, index }) => {
     window.scrollTo(0, 0);
   };
 const imageUrl = room.images && room.images.length > 0
-                             ? `${BACKEND_BASE_URL}${room.images[0]}`
+                             ? room.images[0]
                              : assets.placeholderRoomImage;
 
             console.log(`Constructed image URL for display:`, imageUrl);

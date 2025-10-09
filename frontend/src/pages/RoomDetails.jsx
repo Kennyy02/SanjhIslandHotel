@@ -145,8 +145,8 @@ const RoomDetails = () => {
                 setRoom(roomWithRatings); // Set the room state with combined data
 
                 if (fetchedRoom.images && fetchedRoom.images.length > 0) {
-                    const firstImageRelativePath = fetchedRoom.images[0];
-                    setMainImage(`${BACKEND_URL}${firstImageRelativePath}`);
+                    const firstImageUrl = fetchedRoom.images[0];
+                    setMainImage(firstImageUrl);
                 } else {
                     // Assuming assets.placeholderRoomImage is defined elsewhere for default image
                     setMainImage(assets.placeholderRoomImage);
@@ -619,10 +619,10 @@ const RoomDetails = () => {
                     {room.images && room.images.map((image, index) => (
                         <img
                             key={index}
-                            src={`${BACKEND_URL}${image}`}
+                            src={image}
                             alt={`Room view ${index + 1}`}
                             className="w-50 h-24 object-cover rounded-md cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => setMainImage(`${BACKEND_URL}${image}`)}
+                            onClick={() => setMainImage(image)}
                         />
                     ))}
                 </div>
