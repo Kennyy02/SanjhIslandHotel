@@ -38,12 +38,14 @@ app.options('*', cors(corsConfig));
 
 app.use(express.json());
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Centralize uploads directory with env override for persistent volumes
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(UPLOADS_DIR));
 
 
 const idPictureStorage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const uploadDir = path.join(__dirname, 'uploads/id_pictures');
+        const uploadDir = path.join(UPLOADS_DIR, 'id_pictures');
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
@@ -86,7 +88,7 @@ const uploadIdPicture = multer({
 
 const roomImageStorage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const uploadDir = path.join(__dirname, 'uploads/room_images');
+        const uploadDir = path.join(UPLOADS_DIR, 'room_images');
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
@@ -989,20 +991,24 @@ app.post('/physical-rooms', verifyClerkToken, requireAdmin, async (req, res) => 
         }
 
         // Check if room number already exists
-        const [existingRoom] = await roomDb.execute('SELECT id FROM physical_rooms WHERE room_number = ?', [roomNumber]);
+        // Enforce uniqueness per room type (not globally)
+        const [existingRoom] = await roomDb.execute(
+            'SELECT id FROM physical_rooms WHERE room_number = ? AND room_type_id = ?',
+            [roomNumber, roomTypeId]
+        );
         if (existingRoom.length > 0) {
-            return res.status(409).json({ error: 'Physical room with this number already exists.' });
+            return res.status(409).json({ error: 'Physical room number already exists for this room type.' });
         }
 
-        const [result] = await roomDb.execute(
+        const [insertResult] = await roomDb.execute(
             `INSERT INTO physical_rooms (room_type_id, room_number, status) VALUES (?, ?, 'available')`,
             [roomTypeId, roomNumber]
         );
-        res.status(201).json({ message: 'Physical room added successfully', id: result.insertId });
+        res.status(201).json({ message: 'Physical room added successfully', id: insertResult.insertId });
 
         // Emit real-time update
         emitRealtimeUpdate('physicalRoomAdded', {
-            id: result.insertId,
+            id: insertResult.insertId,
             room_type_id: roomTypeId,
             room_number: roomNumber,
             status: 'available',
