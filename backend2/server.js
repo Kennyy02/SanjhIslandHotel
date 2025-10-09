@@ -16,13 +16,28 @@ const { format, differenceInDays, addDays, differenceInHours, isAfter } = requir
 
 const app = express();
 const PORT = process.env.PORT || 3301;
+// Honor X-Forwarded-* headers (needed on Railway) so req.protocol is accurate
+app.set('trust proxy', 1);
 
-app.use(cors({
-    origin: 'https://sanjhislandhotel.up.railway.app',
+// Flexible CORS: allow multiple origins via CORS_ORIGINS env (comma-separated)
+const allowedOrigins = (process.env.CORS_ORIGINS || 'https://sanjhislandhotel.up.railway.app')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow non-browser requests or same-origin
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error(`Not allowed by CORS: ${origin}`));
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
-}));
+  })
+);
 
 app.use(express.json());
 
@@ -86,16 +101,16 @@ const roomImageStorage = multer.diskStorage({
 });
 
 const uploadRoomImages = multer({
-    storage: roomImageStorage,
-    limits: { fileSize: 10 * 1024 * 1024 },
-    fileFilter: (req, file, cb) => {
-        const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
-        if (allowedMimeTypes.includes(file.mimetype)) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only JPEG, PNG, or GIF images are allowed for rooms.'));
-        }
+  storage: roomImageStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JPEG, PNG, GIF, or WEBP images are allowed for rooms.'));
     }
+  },
 });
 
 //====================================================
@@ -104,10 +119,11 @@ const uploadRoomImages = multer({
 
 const server = http.createServer(app); // Create HTTP server using your express app
 const io = new Server(server, { // Initialize Socket.IO with the HTTP server
-    cors: {
-        origin: 'https://sanjhislandhotel.up.railway.app', // Allow your frontend to connect
-        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
-    }
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: true,
+  },
 });
 
 //=======================================================================
@@ -574,6 +590,18 @@ app.get('/rooms/:id', async (req, res) => {
             room.images = [];
         }
 
+        // Normalize image URLs to absolute with correct base URL
+        const baseUrl =
+          process.env.BASE_URL || `${req.protocol}://${req.get('host') || `localhost:${PORT}`}`;
+        room.images = (Array.isArray(room.images) ? room.images : [])
+          .map((img) => {
+            if (!img) return null;
+            if (typeof img !== 'string') return null;
+            if (/^https?:\/\//i.test(img)) return img; // already absolute URL
+            return `${baseUrl}${img.startsWith('/') ? img : `/uploads/room_images/${img}`}`;
+          })
+          .filter(Boolean);
+
         // Ensure amenities are parsed if stored as JSON string
         if (room.amenities && typeof room.amenities === 'string') {
             try {
@@ -616,7 +644,8 @@ app.get('/rooms/:id', async (req, res) => {
 app.get('/rooms', async (req, res) => {
   try {
     const [results] = await roomDb.execute('SELECT * FROM rooms');
-    const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
+    const baseUrl =
+      process.env.BASE_URL || `${req.protocol}://${req.get('host') || `localhost:${PORT}`}`;
 
     const rooms = results.map(room => {
       const parsedImages = safeParseJSON(room.images, []);
@@ -674,7 +703,8 @@ app.post(
     }
 
     // --- Use full base URL for images ---
-    const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
+    const baseUrl =
+      process.env.BASE_URL || `${req.protocol}://${req.get('host') || `localhost:${PORT}`}`;
 
     let amenitiesArray;
     if (typeof amenities === 'string') {
