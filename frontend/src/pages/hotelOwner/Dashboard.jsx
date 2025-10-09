@@ -85,6 +85,43 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
     const [selectedBooking, setSelectedBooking] = useState(null);
 
     const [showBookingDetailsModal, setShowBookingDetailsModal] = useState(false);
+
+    // Robust local datetime formatter for MySQL DATETIME strings
+    // Ensures strings like 'YYYY-MM-DD HH:mm:ss' are treated as local time
+    const parseMySQLDateTimeToLocal = (value) => {
+        if (!value) return null;
+        if (value instanceof Date) return isNaN(value) ? null : value;
+        if (typeof value !== 'string') return null;
+
+        const trimmed = value.trim();
+        // If it's an ISO string (with 'T' or timezone), defer to Date parser
+        if (trimmed.includes('T') || /z$/i.test(trimmed) || /[+-]\d{2}:?\d{2}$/.test(trimmed)) {
+            const d = new Date(trimmed);
+            return isNaN(d) ? null : d;
+        }
+
+        // Handle 'YYYY-MM-DD HH:mm:ss' or 'YYYY-MM-DD'
+        const [datePart, timePart] = trimmed.split(' ');
+        if (!datePart) return null;
+        const [yStr, mStr, dStr] = datePart.split('-');
+        const year = parseInt(yStr, 10);
+        const month = parseInt(mStr, 10) - 1; // zero-based month
+        const day = parseInt(dStr, 10);
+        let hours = 0, minutes = 0, seconds = 0;
+        if (timePart) {
+            const [hStr, minStr, sStr] = timePart.split(':');
+            hours = parseInt(hStr || '0', 10) || 0;
+            minutes = parseInt(minStr || '0', 10) || 0;
+            seconds = parseInt(sStr || '0', 10) || 0;
+        }
+        const local = new Date(year, month, day, hours, minutes, seconds, 0);
+        return isNaN(local) ? null : local;
+    };
+
+    const formatLocalDateTime = (value) => {
+        const d = parseMySQLDateTimeToLocal(value);
+        return d ? d.toLocaleString() : 'N/A';
+    };
     const fetchBookings = useCallback(async () => {
         if (!isLoaded || !isSignedIn) {
             console.log("Clerk not loaded or user not signed in, skipping fetchBookings.");
@@ -717,10 +754,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
         const displayCheckOutDate = booking.actual_check_out_time || booking.checkOutDate;
 
         // Helper function to format date or show "N/A"
-        const formatDate = (dateValue) => {
-            const date = new Date(dateValue);
-            return !isNaN(date) ? date.toLocaleString() : 'N/A';
-        };
+        const formatDate = (dateValue) => formatLocalDateTime(dateValue);
 
         const receiptHtml = `
             <html>
@@ -838,8 +872,8 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                     <p class="item"><span>Guest:</span> <span>${booking.firstName} ${booking.lastName}</span></p>
                     <p class="item"><span>Room Type:</span> <span>${booking.roomType}</span></p>
                     <p class="item"><span>Room No:</span> <span>${booking.physicalRoomNumber || 'N/A'}</span></p>
-                    <p class="item"><span>Check-in:</span> <span>${new Date(booking.checkInDateAndTime || booking.checkInDate).toLocaleString()}</span></p>
-                    <p class="item"><span>Check-out:</span> <span>${new Date(booking.checkOutDateAndTime || booking.checkOutDate).toLocaleString()}</span></p>
+                    <p class="item"><span>Check-in:</span> <span>${formatLocalDateTime(booking.checkInDateAndTime || booking.checkInDate)}</span></p>
+                    <p class="item"><span>Check-out:</span> <span>${formatLocalDateTime(booking.checkOutDateAndTime || booking.checkOutDate)}</span></p>
                     <hr>
                     <p class="item"><span>Nights:</span> <span>${nights}</span></p>
                     <p class="item"><span>Price/Night:</span> <span>₱${parseFloat(booking.roomPrice || 0).toFixed(2)}</span></p>
@@ -1135,11 +1169,11 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{booking.physicalRoomNumber || 'N/A'}</td> {/* Displaying physicalRoomNumber */}
                                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                                             {/* Display check-in date/time for walk-ins */}
-                                                            {new Date(booking.checkInDateAndTime || booking.checkInDate).toLocaleString()}
+                                                            {formatLocalDateTime(booking.checkInDateAndTime || booking.checkInDate)}
                                                         </td>
                                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                                            {/* Always use toLocaleString for dates that might have time */}
-                                                            {new Date(booking.checkOutDateAndTime || booking.checkOutDate).toLocaleString()}
+                                                            {/* Always format using local parser for MySQL DATETIME */}
+                                                            {formatLocalDateTime(booking.checkOutDateAndTime || booking.checkOutDate)}
                                                         </td>
                                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                                             {/* Display nights for walk-ins */}
@@ -1420,7 +1454,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                             Guest: <strong>{currentWalkInBookingToExtend.firstName} {currentWalkInBookingToExtend.lastName}</strong>
                         </p>
                         <p className="mb-2">
-                            Current Check-out: <strong>{new Date(currentWalkInBookingToExtend.checkOutDateAndTime).toLocaleString()}</strong>
+                            Current Check-out: <strong>{formatLocalDateTime(currentWalkInBookingToExtend.checkOutDateAndTime)}</strong>
                         </p>
                         <p className="mb-4">
                             Current Total Price: <strong>₱{parseFloat(currentWalkInBookingToExtend.totalPrice).toFixed(2)}</strong>
@@ -1720,8 +1754,8 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                                 <h4 className="font-semibold text-lg mb-2">Booking Information</h4>
                                 <p><strong>Status:</strong> {selectedBookingDetails.status}</p>
                                 <p><strong>Guests:</strong> {selectedBookingDetails.guests}</p>
-                                <p><strong>Check-in:</strong> {new Date(selectedBookingDetails.checkInDate || selectedBookingDetails.checkInDateAndTime).toLocaleString()}</p>
-                                <p><strong>Check-out:</strong> {new Date(selectedBookingDetails.checkOutDate || selectedBookingDetails.checkOutDateAndTime).toLocaleString()}</p>
+                                <p><strong>Check-in:</strong> {formatLocalDateTime(selectedBookingDetails.checkInDate || selectedBookingDetails.checkInDateAndTime)}</p>
+                                <p><strong>Check-out:</strong> {formatLocalDateTime(selectedBookingDetails.checkOutDate || selectedBookingDetails.checkOutDateAndTime)}</p>
                                 <p><strong>Nights:</strong> {selectedBookingDetails.nights || 'N/A'}</p> {/* Ensure fallback for nights */}
                             </div>
 
@@ -1795,9 +1829,9 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                             <div className="font-semibold">Room No.:</div>
                             <div>{selectedBooking.physicalRoomNumber || 'N/A'}</div>
                             <div className="font-semibold">Check-in:</div>
-                            <div>{new Date(selectedBooking.checkInDateAndTime || selectedBooking.checkInDate).toLocaleString()}</div>
+                            <div>{formatLocalDateTime(selectedBooking.checkInDateAndTime || selectedBooking.checkInDate)}</div>
                             <div className="font-semibold">Check-out:</div>
-                            <div>{new Date(selectedBooking.checkOutDateAndTime || selectedBooking.checkOutDate).toLocaleString()}</div>
+                            <div>{formatLocalDateTime(selectedBooking.checkOutDateAndTime || selectedBooking.checkOutDate)}</div>
                             <div className="font-semibold">Guests:</div>
                             <div>{selectedBooking.guests}</div>
                             <div className="font-semibold">Room Price:</div>
