@@ -165,6 +165,18 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
         return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 12, 0, 0, 0);
     };
 
+    // Helper to compute projected check-out date/time (noon) after extending nights
+    const formatProjectedWalkInCheckOut = (booking, nightsToExtend) => {
+        const base = getWalkInScheduledNoon(booking);
+        if (!base) return 'N/A';
+        const projected = new Date(base);
+        const addN = parseInt(nightsToExtend || 0);
+        if (!isNaN(addN) && addN > 0) {
+            projected.setDate(projected.getDate() + addN);
+        }
+        return projected.toLocaleString();
+    };
+
     const fetchBookings = useCallback(async () => {
         if (!isLoaded || !isSignedIn) {
             console.log("Clerk not loaded or user not signed in, skipping fetchBookings.");
@@ -1499,16 +1511,10 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                             Guest: <strong>{currentWalkInBookingToExtend.firstName} {currentWalkInBookingToExtend.lastName}</strong>
                         </p>
                         <p className="mb-2">
-                           Check-out: <strong>{formatWalkInCheckOut(currentWalkInBookingToExtend)}</strong>
+                           Check-out: <strong>{formatProjectedWalkInCheckOut(currentWalkInBookingToExtend, walkInNightsToExtend)}</strong>
                         </p>
                         <p className="mb-1 text-sm text-gray-600">
                             Room Price/Night: <strong>₱{parseFloat(currentWalkInBookingToExtend.roomPrice || 0).toFixed(2)}</strong>
-                        </p>
-                        <p className="mb-1">
-                            Current Total Price: <strong>₱{parseFloat(currentWalkInBookingToExtend.totalPrice).toFixed(2)}</strong>
-                        </p>
-                        <p className="mb-2">
-                            Current Amount Paid: <strong>₱{parseFloat(currentWalkInBookingToExtend.amountPaid).toFixed(2)}</strong>
                         </p>
 
                         {/* Discount selection for extension */}
@@ -1556,7 +1562,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                             min="0"
                             step="0.01"
                         />
-                        {/* Calculated preview */}
+                        {/* Calculated summary (unhighlighted, extension-focused) */}
                         {(() => {
                             const basePerNight = parseFloat(currentWalkInBookingToExtend.roomPrice || 0);
                             const extendNights = parseInt(walkInNightsToExtend || 0);
@@ -1568,14 +1574,12 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                             const projectedAmountPaid = parseFloat(currentWalkInBookingToExtend.amountPaid || 0) + parseFloat(walkInPaymentAmount || 0);
                             const projectedBalance = projectedTotal - projectedAmountPaid;
                             return (
-                                <div className="mt-3 text-sm bg-gray-50 border rounded p-3">
+                                <div className="mt-3 text-sm">
                                     <div className="flex justify-between"><span>Extension ({extendNights} night{extendNights === 1 ? '' : 's'})</span><span>₱{extensionBase.toFixed(2)}</span></div>
                                     <div className="flex justify-between"><span>Extension Discount</span><span>- ₱{extensionDiscount.toFixed(2)}</span></div>
-                                    <div className="flex justify-between font-semibold"><span>Extension Net</span><span>₱{extensionNet.toFixed(2)}</span></div>
-                                    <hr className="my-2" />
                                     <div className="flex justify-between"><span>Projected Total Price</span><span>₱{projectedTotal.toFixed(2)}</span></div>
                                     <div className="flex justify-between"><span>Projected Amount Paid</span><span>₱{projectedAmountPaid.toFixed(2)}</span></div>
-                                    <div className="flex justify-between font-bold text-blue-700"><span>Projected Balance Due</span><span>₱{projectedBalance.toFixed(2)}</span></div>
+                                    <div className="flex justify-between font-semibold text-gray-900"><span>Projected Balance Due</span><span>₱{projectedBalance.toFixed(2)}</span></div>
                                 </div>
                             );
                         })()}
