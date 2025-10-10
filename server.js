@@ -307,13 +307,40 @@ const requireAdmin = async (req, res, next) => {
 // ====================================================================
 
 
-// Middleware to ensure database connection is available before handling requests
+// Middleware to ensure required database connection(s) are available before handling requests
+// IMPORTANT: Only check the DBs relevant to the route so public endpoints don't fail when unrelated DBs are down
+const isDbHealthy = (db) => {
+    try {
+        return !!db && !(db.connection && db.connection._closing);
+    } catch (_) {
+        return false;
+    }
+};
+
 app.use((req, res, next) => {
-    // Check if feedbackDb is initialized and not closing, and similarly for other dbs
-    if (!feedbackDb || feedbackDb.connection._closing || !roomDb || roomDb.connection._closing ||
-        !bookingDb || bookingDb.connection._closing || !userDb || userDb.connection._closing ||
-        !walkInBookingDb || walkInBookingDb.connection._closing) {
-        console.error('Database connection not available or closing.');
+    const path = req.path || '';
+
+    // Routes that only need the feedback DB
+    if (path.startsWith('/api/testimonials')) {
+        if (!isDbHealthy(feedbackDb)) {
+            console.error('[HealthCheck] Feedback DB not available.');
+            return res.status(500).json({ message: 'Testimonials service unavailable. Please try again later.' });
+        }
+        return next();
+    }
+
+    // Routes that only need the room DB
+    if (path === '/rooms' || path.startsWith('/rooms/') || path.startsWith('/room-ratings-summary')) {
+        if (!isDbHealthy(roomDb)) {
+            console.error('[HealthCheck] Room DB not available.');
+            return res.status(500).json({ message: 'Rooms service unavailable. Please try again later.' });
+        }
+        return next();
+    }
+
+    // For all other routes, keep the strict check (these typically depend on multiple DBs)
+    if (!isDbHealthy(feedbackDb) || !isDbHealthy(roomDb) || !isDbHealthy(bookingDb) || !isDbHealthy(userDb) || !isDbHealthy(walkInBookingDb)) {
+        console.error('[HealthCheck] One or more required databases are not available.');
         return res.status(500).json({ message: 'Database connection error. Please try again later.' });
     }
     next();

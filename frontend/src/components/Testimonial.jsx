@@ -77,7 +77,9 @@ const Testimonial = ({ showModal }) => {
     } catch (err) {
       console.error("Error fetching testimonials:", err);
       setError("Failed to load testimonials. Please try again later.");
-      showModal("Failed to load testimonials. Please try again later.");
+      if (typeof showModal === 'function') {
+        showModal("Failed to load testimonials. Please try again later.");
+      }
     } finally {
       setLoading(false);
     }
@@ -126,12 +128,16 @@ const Testimonial = ({ showModal }) => {
       }
 
       setNewTestimonial({ name: '', review: '', rating: 5, address: '' }); // Clear form
-      showModal("Testimonial submitted successfully!");
+      if (typeof showModal === 'function') {
+        showModal("Testimonial submitted successfully!");
+      }
       fetchTestimonials(); // Re-fetch testimonials to show the new one
     } catch (err) {
       console.error("Error adding testimonial:", err);
       setError(`Failed to submit testimonial: ${err.message}`);
-      showModal(`Failed to submit testimonial: ${err.message}`);
+      if (typeof showModal === 'function') {
+        showModal(`Failed to submit testimonial: ${err.message}`);
+      }
     }
   };
 
