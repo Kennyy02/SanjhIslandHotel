@@ -64,6 +64,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
     const [walkInPaymentAmount, setWalkInPaymentAmount] = useState(0);
     const [extendingWalkInBooking, setExtendingWalkInBooking] = useState(false);
     const [walkInExtendError, setWalkInExtendError] = useState(''); // Initial state as empty string
+    const [walkInExtendDiscountType, setWalkInExtendDiscountType] = useState('none');
 
     // Walk-In Booking Checkout State (NEW)
     const [isCheckoutWalkInConfirmModalOpen, setIsCheckoutWalkInConfirmModalOpen] = useState(false);
@@ -697,6 +698,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
         setWalkInNightsToExtend(1); // Default to 1 night
         setWalkInPaymentAmount(0); // Default to 0 payment
         setWalkInExtendError(''); // Changed from null to ''
+        setWalkInExtendDiscountType('none');
         setIsExtendWalkInModalOpen(true);
     };
 
@@ -706,6 +708,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
         setWalkInNightsToExtend(1);
         setWalkInPaymentAmount(0);
         setWalkInExtendError(''); // Changed from null to ''
+        setWalkInExtendDiscountType('none');
     };
 
     const handleConfirmWalkInExtend = async () => {
@@ -721,7 +724,8 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
             await axios.patch(`${BACKEND_URL}/admin/bookings/walk-in/${currentWalkInBookingToExtend.id}/extend`,
                 {
                     nightsToExtend: walkInNightsToExtend,
-                    paymentAmount: walkInPaymentAmount
+                    paymentAmount: walkInPaymentAmount,
+                    discountType: walkInExtendDiscountType
                 },
                 {
                     headers: { Authorization: `Bearer ${token}` }
@@ -1495,17 +1499,34 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                             Guest: <strong>{currentWalkInBookingToExtend.firstName} {currentWalkInBookingToExtend.lastName}</strong>
                         </p>
                         <p className="mb-2">
-                           Current Check-out: <strong>{formatWalkInCheckOut(currentWalkInBookingToExtend)}</strong>
+                           Check-out: <strong>{formatWalkInCheckOut(currentWalkInBookingToExtend)}</strong>
                         </p>
-                        <p className="mb-4">
+                        <p className="mb-1 text-sm text-gray-600">
+                            Room Price/Night: <strong>₱{parseFloat(currentWalkInBookingToExtend.roomPrice || 0).toFixed(2)}</strong>
+                        </p>
+                        <p className="mb-1">
                             Current Total Price: <strong>₱{parseFloat(currentWalkInBookingToExtend.totalPrice).toFixed(2)}</strong>
                         </p>
-                        <p className="mb-4">
+                        <p className="mb-2">
                             Current Amount Paid: <strong>₱{parseFloat(currentWalkInBookingToExtend.amountPaid).toFixed(2)}</strong>
                         </p>
-                        <p className="mb-4 text-lg font-bold text-blue-700">
-                            Balance Due: ₱{(parseFloat(currentWalkInBookingToExtend.totalPrice) - parseFloat(currentWalkInBookingToExtend.amountPaid)).toFixed(2)}
-                        </p>
+
+                        {/* Discount selection for extension */}
+                        <div className="mb-4">
+                            <label htmlFor="walkInExtendDiscountType" className="block text-sm font-medium text-gray-700 mb-2">
+                                Apply Discount for Extension:
+                            </label>
+                            <select
+                                id="walkInExtendDiscountType"
+                                value={walkInExtendDiscountType}
+                                onChange={(e) => setWalkInExtendDiscountType(e.target.value)}
+                                className="w-full border border-gray-300 p-2 rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-150 ease-in-out"
+                            >
+                                <option value="none">No Discount</option>
+                                <option value="senior">Senior (10%)</option>
+                                <option value="repeater">Repeater Guest (10%)</option>
+                            </select>
+                        </div>
 
                         <label htmlFor="walkInNightsToExtend" className="block text-sm font-medium text-gray-700 mb-2">
                             Nights to Extend:
@@ -1535,6 +1556,30 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                             min="0"
                             step="0.01"
                         />
+                        {/* Calculated preview */}
+                        {(() => {
+                            const basePerNight = parseFloat(currentWalkInBookingToExtend.roomPrice || 0);
+                            const extendNights = parseInt(walkInNightsToExtend || 0);
+                            const extensionBase = basePerNight * extendNights;
+                            const discountRate = (walkInExtendDiscountType === 'senior' || walkInExtendDiscountType === 'repeater') ? 0.10 : 0;
+                            const extensionDiscount = extensionBase * discountRate;
+                            const extensionNet = extensionBase - extensionDiscount;
+                            const projectedTotal = parseFloat(currentWalkInBookingToExtend.totalPrice) + extensionNet;
+                            const projectedAmountPaid = parseFloat(currentWalkInBookingToExtend.amountPaid || 0) + parseFloat(walkInPaymentAmount || 0);
+                            const projectedBalance = projectedTotal - projectedAmountPaid;
+                            return (
+                                <div className="mt-3 text-sm bg-gray-50 border rounded p-3">
+                                    <div className="flex justify-between"><span>Extension ({extendNights} night{extendNights === 1 ? '' : 's'})</span><span>₱{extensionBase.toFixed(2)}</span></div>
+                                    <div className="flex justify-between"><span>Extension Discount</span><span>- ₱{extensionDiscount.toFixed(2)}</span></div>
+                                    <div className="flex justify-between font-semibold"><span>Extension Net</span><span>₱{extensionNet.toFixed(2)}</span></div>
+                                    <hr className="my-2" />
+                                    <div className="flex justify-between"><span>Projected Total Price</span><span>₱{projectedTotal.toFixed(2)}</span></div>
+                                    <div className="flex justify-between"><span>Projected Amount Paid</span><span>₱{projectedAmountPaid.toFixed(2)}</span></div>
+                                    <div className="flex justify-between font-bold text-blue-700"><span>Projected Balance Due</span><span>₱{projectedBalance.toFixed(2)}</span></div>
+                                </div>
+                            );
+                        })()}
+
                         {walkInExtendError && <p className="text-red-500 text-sm mt-2">{walkInExtendError}</p>}
 
                         <div className="flex justify-end gap-3 mt-6">
