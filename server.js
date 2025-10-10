@@ -1426,9 +1426,10 @@ app.patch('/admin/bookings/walk-in/:id/checkout', verifyClerkToken, requireAdmin
 
         // Calculate late check-out fee if actualCheckOutTime is after scheduledCheckOutDate
         if (isAfter(actualCheckOutTime, scheduledCheckOutDate)) {
-            const lateHours = differenceInHours(actualCheckOutTime, scheduledCheckOutDate);
-            lateCheckOutFee = Math.ceil(lateHours) * 100; // ₱100 per hour, rounded up
-            console.log(`[SERVER] Late Check-out detected for walk-in booking ${id}: ${lateHours} hours late. Fee: ₱${lateCheckOutFee}`);
+            const lateMs = actualCheckOutTime.getTime() - scheduledCheckOutDate.getTime();
+            const lateHoursRoundedUp = Math.ceil(lateMs / (1000 * 60 * 60)); // bill as 1 hour immediately past noon
+            lateCheckOutFee = Math.max(0, lateHoursRoundedUp) * 100; // ₱100 per hour, rounded up
+            console.log(`[SERVER] Late Check-out detected for walk-in booking ${id}: ${lateHoursRoundedUp} hours late (rounded). Fee: ₱${lateCheckOutFee}`);
         }
 
         const newTotalPrice = parseFloat(booking.totalPrice) + lateCheckOutFee;
@@ -1533,7 +1534,7 @@ app.get('/admin/walk-in-bookings', verifyClerkToken, requireAdmin, async (req, r
         `);
 
         const now = new Date();
-        // Process bookings to calculate dynamic lateCheckOutFee for overdue ones
+        // Process bookings to calculate dynamic lateCheckOutFee for overdue ones (₱100 as soon as past noon)
         walkInBookings = walkInBookings.map(booking => {
             const checkOutDateTime = new Date(booking.checkOutDateAndTime);
             let dynamicLateCheckOutFee = parseFloat(booking.lateCheckOutFee || 0);
@@ -1541,8 +1542,9 @@ app.get('/admin/walk-in-bookings', verifyClerkToken, requireAdmin, async (req, r
 
             // Only calculate dynamic late fee if the booking is currently 'Checked-In'
             if (booking.status === 'Checked-In' && isAfter(now, checkOutDateTime)) {
-                const lateHours = differenceInHours(now, checkOutDateTime);
-                const calculatedHourlyFee = Math.ceil(lateHours) * 100;
+                const lateMs = now.getTime() - checkOutDateTime.getTime();
+                const lateHoursRoundedUp = Math.ceil(lateMs / (1000 * 60 * 60)); // 1+ hour billed as soon as past noon
+                const calculatedHourlyFee = Math.max(0, lateHoursRoundedUp) * 100;
 
                 if (dynamicLateCheckOutFee === 0 || calculatedHourlyFee > dynamicLateCheckOutFee) {
                     dynamicLateCheckOutFee = calculatedHourlyFee;

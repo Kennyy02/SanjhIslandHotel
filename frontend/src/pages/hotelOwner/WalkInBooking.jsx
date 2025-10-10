@@ -383,9 +383,10 @@ const WalkInBooking = () => {
 
         const checkIn = format(selectedCheckInDate, 'yyyy-MM-dd');
         const checkOut = format(selectedCheckOutDate, 'yyyy-MM-dd');
-        const actualCheckInDateTimeString = actualCheckInTimeInput
-            ? `${checkIn}T${actualCheckInTimeInput}:00`
-            : null;
+        // Always set check-in time to the current time at booking
+        const nowAtBooking = new Date();
+        const currentTimeString = format(nowAtBooking, 'HH:mm');
+        const actualCheckInDateTimeString = `${checkIn}T${currentTimeString}:00`;
 
         try {
             const token = await getToken();
@@ -603,11 +604,16 @@ const WalkInBooking = () => {
                             */}
 
                             <div className="mb-4">
-                                <label htmlFor="actualCheckInTime" className="block text-sm font-medium text-gray-700 mb-1">Desired Check-in Time (Optional, Standard is 2:00 PM):</label>
-                                <input
-                                    type="time" id="actualCheckInTime" value={actualCheckInTimeInput} onChange={(e) => setActualCheckInTimeInput(e.target.value)}
-                                    className="w-full border border-gray-300 p-2 rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-150 ease-in-out"
-                                />
+                            <label htmlFor="actualCheckInTime" className="block text-sm font-medium text-gray-700 mb-1">Check-in Time</label>
+                            <input
+                                type="time"
+                                id="actualCheckInTime"
+                                value={actualCheckInTimeInput}
+                                onChange={(e) => setActualCheckInTimeInput(e.target.value)}
+                                className="w-full border border-gray-300 p-2 rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-150 ease-in-out bg-gray-100"
+                                readOnly
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Automatically set to the current time when you click Book Now.</p>
                             </div>
                             {selectedRoomTypeId && selectedCheckInDate && selectedCheckOutDate && (
                                 <div className="mb-4">
