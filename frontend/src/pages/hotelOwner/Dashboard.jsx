@@ -135,6 +135,35 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
         return d ? d.toLocaleString() : 'N/A';
     };
 
+    // Walk-in specific display helpers
+    const formatWalkInCheckIn = (booking) => {
+        const v = booking?.checkInDateAndTime || booking?.checkInDate;
+        const d = parseMySQLDateTimeToLocal(v);
+        return d ? d.toLocaleString() : 'N/A';
+    };
+
+    const formatWalkInCheckOut = (booking) => {
+        const v = booking?.checkOutDateAndTime || booking?.checkOutDate;
+        const parsed = parseMySQLDateTimeToLocal(v);
+        if (!parsed) return 'N/A';
+        // Force scheduled checkout display to 12:00 PM local time
+        const noon = new Date(
+            parsed.getFullYear(),
+            parsed.getMonth(),
+            parsed.getDate(),
+            12, 0, 0, 0
+        );
+        return noon.toLocaleString();
+    };
+
+    // Helper to get scheduled noon Date for comparisons
+    const getWalkInScheduledNoon = (booking) => {
+        const v = booking?.checkOutDateAndTime || booking?.checkOutDate;
+        const parsed = parseMySQLDateTimeToLocal(v);
+        if (!parsed) return null;
+        return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 12, 0, 0, 0);
+    };
+
     const fetchBookings = useCallback(async () => {
         if (!isLoaded || !isSignedIn) {
             console.log("Clerk not loaded or user not signed in, skipping fetchBookings.");
@@ -885,8 +914,8 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                     <p class="item"><span>Guest:</span> <span>${booking.firstName} ${booking.lastName}</span></p>
                     <p class="item"><span>Room Type:</span> <span>${booking.roomType}</span></p>
                     <p class="item"><span>Room No:</span> <span>${booking.physicalRoomNumber || 'N/A'}</span></p>
-                    <p class="item"><span>Check-in:</span> <span>${formatLocalDateTime(booking.checkInDateAndTime || booking.checkInDate)}</span></p>
-                    <p class="item"><span>Check-out:</span> <span>${formatLocalDateTime(booking.checkOutDateAndTime || booking.checkOutDate)}</span></p>
+                    <p class="item"><span>Check-in:</span> <span>${formatWalkInCheckIn(booking)}</span></p>
+                    <p class="item"><span>Check-out:</span> <span>${formatWalkInCheckOut(booking)}</span></p>
                     <hr>
                     <p class="item"><span>Nights:</span> <span>${nights}</span></p>
                     <p class="item"><span>Price/Night:</span> <span>₱${parseFloat(booking.roomPrice || 0).toFixed(2)}</span></p>
@@ -1153,7 +1182,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
                                                 // Determine the background color based on isPaid status and overdue status
                                                 let rowBackgroundColorClass = '';
-                                                const checkOutDateTime = parseMySQLDateTimeToLocal(booking.checkOutDateAndTime || booking.checkOutDate);
+                                                const checkOutDateTime = getWalkInScheduledNoon(booking) || parseMySQLDateTimeToLocal(booking.checkOutDateAndTime || booking.checkOutDate);
                                                 const now = new Date();
 
                                                 if (checkOutDateTime < now && booking.status !== 'Checked-Out') {
@@ -1182,11 +1211,10 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{booking.physicalRoomNumber || 'N/A'}</td> {/* Displaying physicalRoomNumber */}
                                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                                             {/* Display check-in date/time for walk-ins */}
-                                                            {formatLocalDateTime(booking.checkInDateAndTime || booking.checkInDate)}
+                                                            {formatWalkInCheckIn(booking)}
                                                         </td>
                                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                                            
-                                                            {formatLocalDateTime(booking.checkOutDateAndTime || booking.checkOutDate)}
+                                                            {formatWalkInCheckOut(booking)}
                                                         </td>
                                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                                             {/* Display nights for walk-ins */}
@@ -1467,7 +1495,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                             Guest: <strong>{currentWalkInBookingToExtend.firstName} {currentWalkInBookingToExtend.lastName}</strong>
                         </p>
                         <p className="mb-2">
-                           Current Check-out: <strong>{formatLocalDateTime(currentWalkInBookingToExtend.checkOutDateAndTime)}</strong>
+                           Current Check-out: <strong>{formatWalkInCheckOut(currentWalkInBookingToExtend)}</strong>
                         </p>
                         <p className="mb-4">
                             Current Total Price: <strong>₱{parseFloat(currentWalkInBookingToExtend.totalPrice).toFixed(2)}</strong>
@@ -1842,9 +1870,9 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                             <div className="font-semibold">Room No.:</div>
                             <div>{selectedBooking.physicalRoomNumber || 'N/A'}</div>
                             <div className="font-semibold">Check-in:</div>
-                             <div>{formatLocalDateTime(selectedBooking.checkInDateAndTime || selectedBooking.checkInDate)}</div>
+                             <div>{formatWalkInCheckIn(selectedBooking)}</div>
                             <div className="font-semibold">Check-out:</div>
-                            <div>{formatLocalDateTime(selectedBooking.checkOutDateAndTime || selectedBooking.checkOutDate)}</div>
+                            <div>{formatWalkInCheckOut(selectedBooking)}</div>
                             <div className="font-semibold">Guests:</div>
                             <div>{selectedBooking.guests}</div>
                             <div className="font-semibold">Room Price:</div>
