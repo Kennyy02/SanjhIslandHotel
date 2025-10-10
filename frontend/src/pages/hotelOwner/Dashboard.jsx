@@ -86,34 +86,46 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
     const [showBookingDetailsModal, setShowBookingDetailsModal] = useState(false);
     
-    // Robust local datetime formatter for MySQL DATETIME strings
-    // Ensures strings like 'YYYY-MM-DD HH:mm:ss' are treated as local time
+    // Robust local datetime parser that treats server timestamps as local clock time.
+    // Handles:
+    // - 'YYYY-MM-DD HH:mm:ss'
+    // - 'YYYY-MM-DD'
+    // - ISO-like strings 'YYYY-MM-DDTHH:mm:ss[.SSS][Z|±HH:mm]' by IGNORING timezone
+    // This avoids unintended timezone shifts when backend serializes MySQL DATETIME as ISO.
     const parseMySQLDateTimeToLocal = (value) => {
         if (!value) return null;
         if (value instanceof Date) return isNaN(value) ? null : value;
         if (typeof value !== 'string') return null;
 
         const trimmed = value.trim();
-        // If it's an ISO string (with 'T' or timezone), defer to Date parser
-        if (trimmed.includes('T') || /z$/i.test(trimmed) || /[+-]\d{2}:?\d{2}$/.test(trimmed)) {
-            const d = new Date(trimmed);
-            return isNaN(d) ? null : d;
-        }
 
-        // Handle 'YYYY-MM-DD HH:mm:ss' or 'YYYY-MM-DD'
-        const [datePart, timePart] = trimmed.split(' ');
-        if (!datePart) return null;
-        const [yStr, mStr, dStr] = datePart.split('-');
+        // Normalize to 'YYYY-MM-DD HH:mm:ss' and DROP timezone/fragments if present
+        // 1) Replace 'T' with space
+        // 2) Strip trailing 'Z' or timezone offset like +08:00 / -0500
+        // 3) Drop fractional seconds
+        let normalized = trimmed.replace('T', ' ')
+            .replace(/[zZ]$/, '')
+            .replace(/([+-]\d{2}:?\d{2})$/, '')
+            .trim();
+
+        // Split date and time
+        const [datePartRaw, timePartRaw] = normalized.split(' ');
+        if (!datePartRaw) return null;
+
+        const [yStr, mStr, dStr] = datePartRaw.split('-');
         const year = parseInt(yStr, 10);
         const month = parseInt(mStr, 10) - 1; // zero-based month
         const day = parseInt(dStr, 10);
+
         let hours = 0, minutes = 0, seconds = 0;
-        if (timePart) {
-            const [hStr, minStr, sStr] = timePart.split(':');
-            hours = parseInt(hStr || '0', 10) || 0;
-            minutes = parseInt(minStr || '0', 10) || 0;
-            seconds = parseInt(sStr || '0', 10) || 0;
+        if (timePartRaw) {
+            const timeMain = timePartRaw.split('.')[0]; // remove fractional seconds if any
+            const [hStr = '0', minStr = '0', sStr = '0'] = timeMain.split(':');
+            hours = parseInt(hStr, 10) || 0;
+            minutes = parseInt(minStr, 10) || 0;
+            seconds = parseInt(sStr, 10) || 0;
         }
+
         const local = new Date(year, month, day, hours, minutes, seconds, 0);
         return isNaN(local) ? null : local;
     };
@@ -1141,7 +1153,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
                                                 // Determine the background color based on isPaid status and overdue status
                                                 let rowBackgroundColorClass = '';
-                                                const checkOutDateTime = new Date(booking.checkOutDateAndTime || booking.checkOutDate);
+                                                const checkOutDateTime = parseMySQLDateTimeToLocal(booking.checkOutDateAndTime || booking.checkOutDate);
                                                 const now = new Date();
 
                                                 if (checkOutDateTime < now && booking.status !== 'Checked-Out') {
