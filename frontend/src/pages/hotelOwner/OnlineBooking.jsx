@@ -1053,6 +1053,13 @@ const AdminDashboard = () => {
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">₱{parseFloat(booking.lateCheckOutFee || 0).toFixed(2)}</td> {/* Display Late Check-out Fee */}
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">₱{booking.totalPrice.toFixed(2)}</td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">₱{parseFloat(booking.amountPaid || 0).toFixed(2)}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                                <span className={`px-2 inline-flex text-xs leading-5 rounded-full ${
+                                    booking.isPaid === 'Fully Paid' ? 'bg-green-100 text-green-800' : booking.isPaid === 'Partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                                }`}>
+                                    {booking.isPaid || 'Not Paid'}
+                                </span>
+                            </td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">₱{(parseFloat(booking.totalPrice || 0) - parseFloat(booking.amountPaid || 0)).toFixed(2)}</td>
 
 

@@ -86,6 +86,11 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
     const [selectedBooking, setSelectedBooking] = useState(null);
 
     const [showBookingDetailsModal, setShowBookingDetailsModal] = useState(false);
+    // NEW: Verify Payment modal state for online bookings
+    const [verifyPaymentFor, setVerifyPaymentFor] = useState(null); // booking object
+    const [verifyAmount, setVerifyAmount] = useState('');
+    const [verifyError, setVerifyError] = useState(null);
+    const [verifyingPayment, setVerifyingPayment] = useState(false);
     
     // Robust local datetime formatter for MySQL DATETIME strings
     // Ensures strings like 'YYYY-MM-DD HH:mm:ss' are treated as local time
@@ -325,7 +330,8 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
         socket.on('bookingPaymentUpdated', (updatedBooking) => { // Listen for payment updates
             console.log('Real-time: Booking payment updated', updatedBooking);
-            fetchWalkInBookings(); // Refresh walk-in bookings
+            fetchBookings(); // Refresh online bookings
+            fetchWalkInBookings(); // Refresh walk-in bookings (in case)
             fetchDashboardSummary();
         });
 
@@ -546,6 +552,41 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
     const handleCloseBookingDetailsModal = () => {
         setShowBookingDetailsModal(false);
         setSelectedBookingDetails(null);
+    };
+
+    const handleCloseVerifyPayment = () => {
+        setVerifyPaymentFor(null);
+        setVerifyAmount('');
+        setVerifyError(null);
+        setVerifyingPayment(false);
+    };
+
+    const handleConfirmVerifyPayment = async () => {
+        if (!verifyPaymentFor) return;
+        const amount = parseFloat(verifyAmount);
+        if (isNaN(amount) || amount <= 0) {
+            setVerifyError('Please enter a valid amount.');
+            return;
+        }
+        setVerifyingPayment(true);
+        setVerifyError(null);
+        try {
+            const token = await getToken();
+            await axios.patch(
+                `${BACKEND_URL}/admin/bookings/${verifyPaymentFor.id}/record-payment`,
+                { amountPaid: amount },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            alert('Payment verified and recorded.');
+            fetchBookings();
+            fetchDashboardSummary();
+            handleCloseVerifyPayment();
+        } catch (err) {
+            console.error('Failed to record payment:', err.response?.data || err.message);
+            setVerifyError(err.response?.data?.error || 'Failed to record payment.');
+        } finally {
+            setVerifyingPayment(false);
+        }
     };
 
 
@@ -1035,6 +1076,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Late Check-out Fee</th> {/* NEW COLUMN */}
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Price</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paid</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Ref</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -1069,11 +1111,12 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                             <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">₱{booking.totalPrice.toFixed(2)}</td>
                             <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
                                 <span className={`px-2 inline-flex text-xs leading-5 rounded-full ${
-                                    booking.isPaid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                    booking.paymentStatus === 'Fully Paid' ? 'bg-green-100 text-green-800' : booking.paymentStatus === 'Partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
                                 }`}>
-                                    {booking.isPaid ? 'Yes' : 'No'}
+                                    {booking.paymentStatus || (booking.isPaid ? 'Fully Paid' : 'Not Paid')}
                                 </span>
                             </td>
+                            <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{booking.paymentReference || '—'}</td>
                             <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
                                 <span className={`px-2 inline-flex text-xs leading-5  rounded-full
                                     ${isOverdue ? 'bg-red-400 text-white' : // Overdue
@@ -1115,6 +1158,15 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                                         disabled={loading}
                                     >
                                         Extend
+                                    </button>
+                                )}
+                                {booking.status === 'approved' && (
+                                    <button
+                                        onClick={() => setVerifyPaymentFor(booking)}
+                                        className="text-green-600 hover:text-green-900 mr-2 cursor-pointer"
+                                        disabled={loading}
+                                    >
+                                        Verify Payment
                                     </button>
                                 )}
                                 {booking.status === 'approved' && booking.isPaid && (
@@ -1856,11 +1908,13 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                                 <p><strong>Total Price:</strong> ₱{parseFloat(selectedBookingDetails.totalPrice || 0).toFixed(2)}</p>
                                 <p><strong>Amount Paid:</strong> ₱{parseFloat(selectedBookingDetails.amountPaid || 0).toFixed(2)}</p> {/* Corrected to amountPaid */}
                                 <p><strong>Balance:</strong> ₱{(parseFloat(selectedBookingDetails.totalPrice || 0) - parseFloat(selectedBookingDetails.amountPaid || 0)).toFixed(2)}</p>
-                                <p><strong>Payment Status:</strong><span className={`px-2 inline-flex text-m leading-5 font-semibold rounded-full ${
-                                    selectedBookingDetails.isPaid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                }`}>
-                                    {selectedBookingDetails.isPaid ? 'Yes' : 'No'}
-                                </span>
+                                <p>
+                                  <strong>Payment Status:</strong>
+                                  <span className={`ml-2 px-2 inline-flex text-m leading-5 font-semibold rounded-full ${
+                                      selectedBookingDetails.paymentStatus === 'Fully Paid' ? 'bg-green-100 text-green-800' : selectedBookingDetails.paymentStatus === 'Partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                                  }`}>
+                                      {selectedBookingDetails.paymentStatus || (selectedBookingDetails.isPaid ? 'Fully Paid' : 'Not Paid')}
+                                  </span>
                                 </p>
                                 <p><strong>Late Check-out Fee:</strong> ₱{parseFloat(selectedBookingDetails.lateCheckOutFee || 0).toFixed(2)}</p>
                             </div>
@@ -1878,6 +1932,51 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
                         </button>
                         </div>
 
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* NEW: Verify Payment Modal (Online Bookings) */}
+            {verifyPaymentFor && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+                        <h3 className="text-lg font-semibold mb-4">Verify Payment for Booking #{verifyPaymentFor.id}</h3>
+                        <p className="mb-2 text-sm">Reference: <strong>{verifyPaymentFor.paymentReference || '—'}</strong></p>
+                        <p className="mb-2 text-sm">Total Price: <strong>₱{parseFloat(verifyPaymentFor.totalPrice || 0).toFixed(2)}</strong></p>
+                        <p className="mb-4 text-sm">Amount Already Paid: <strong>₱{parseFloat(verifyPaymentFor.amountPaid || 0).toFixed(2)}</strong></p>
+
+                        <label htmlFor="verifyAmount" className="block text-sm font-medium text-gray-700 mb-2">
+                            Amount Received
+                        </label>
+                        <input
+                            type="number"
+                            id="verifyAmount"
+                            value={verifyAmount}
+                            onChange={(e) => setVerifyAmount(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            placeholder="Enter amount"
+                            min="0.01"
+                            step="0.01"
+                        />
+                        {verifyError && <p className="text-red-500 text-sm mt-2">{verifyError}</p>}
+
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button
+                                type="button"
+                                onClick={handleCloseVerifyPayment}
+                                className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 transition duration-200 ease-in-out"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmVerifyPayment}
+                                className="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition duration-200 ease-in-out"
+                                disabled={verifyingPayment}
+                            >
+                                {verifyingPayment ? 'Verifying...' : 'Confirm'}
+                            </button>
                         </div>
                     </div>
                 </div>

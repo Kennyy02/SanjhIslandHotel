@@ -1568,6 +1568,7 @@ app.get('/bookings/user/:userId', verifyClerkToken, async (req, res) => {
                 b.checkOutDate,
                 b.totalPrice,
                 b.isPaid,
+                b.amountPaid,
                 b.guests,
                 b.status,
                 b.assigned_room_number,
@@ -1575,6 +1576,7 @@ app.get('/bookings/user/:userId', verifyClerkToken, async (req, res) => {
                 b.actual_check_in_time,
                 b.actual_check_out_time,
                 b.actualPaymentTime,
+                b.payment_reference,
                 pr.room_number AS physical_room_number_from_pr,
                 rr.rating AS userRating_rating,
                 rr.comment AS userRating_comment
@@ -1649,6 +1651,17 @@ app.get('/bookings/user/:userId', verifyClerkToken, async (req, res) => {
                 ? { rating: booking.userRating_rating, comment: booking.userRating_comment }
                 : null;
 
+            const parsedTotalPrice = parseFloat(booking.totalPrice);
+            const parsedAmountPaid = parseFloat(booking.amountPaid || 0);
+            let paymentStatus = 'Not Paid';
+            if (!isNaN(parsedAmountPaid)) {
+                if (parsedAmountPaid >= parsedTotalPrice) {
+                    paymentStatus = 'Fully Paid';
+                } else if (parsedAmountPaid > 0) {
+                    paymentStatus = 'Partial';
+                }
+            }
+
             return {
                 id: booking.id,
                 userId: booking.userId,
@@ -1662,8 +1675,10 @@ app.get('/bookings/user/:userId', verifyClerkToken, async (req, res) => {
                 address: roomDetails ? roomDetails.address : 'Main Road 123 Street, 23 Colony',
                 checkInDate: booking.checkInDate,
                 checkOutDate: booking.checkOutDate,
-                totalPrice: parseFloat(booking.totalPrice),
-                isPaid: booking.isPaid === 1,
+                totalPrice: parsedTotalPrice,
+                isPaid: paymentStatus === 'Fully Paid',
+                paymentStatus,
+                amountPaid: parsedAmountPaid,
                 guests: booking.guests,
                 status: booking.status,
                 assigned_room_number: booking.assigned_room_number,
@@ -1672,6 +1687,7 @@ app.get('/bookings/user/:userId', verifyClerkToken, async (req, res) => {
                 actualCheckInTime: booking.actual_check_in_time,
                 actualCheckOutTime: booking.actual_check_out_time,
                 actualPaymentTime: booking.actualPaymentTime,
+                paymentReference: booking.payment_reference || null,
                 userRating: userRating
             };
         });
@@ -1790,6 +1806,7 @@ app.patch('/admin/bookings/:id/pay-in-cash', verifyClerkToken, requireAdmin, asy
 app.patch('/bookings/:id/mark-paid', verifyClerkToken, async (req, res) => {
     const bookingId = req.params.id;
     const { userId } = req.auth; // Get userId from Clerk auth
+    const { referenceNumber } = req.body || {};
 
     try {
         const [bookingRows] = await bookingDb.execute(
@@ -1803,50 +1820,29 @@ app.patch('/bookings/:id/mark-paid', verifyClerkToken, async (req, res) => {
 
         const booking = bookingRows[0];
 
-        if (booking.isPaid === 1) {
-            return res.status(400).json({ error: 'Booking is already paid' });
-        }
         if (booking.status !== 'approved') {
-            return res.status(400).json({ error: 'Only approved bookings can be marked as paid' });
+            return res.status(400).json({ error: 'Only approved bookings can submit payment reference' });
         }
 
-        // Update booking to paid
+        // Store the submitted payment reference for admin verification.
         await bookingDb.execute(
-            `UPDATE bookings SET isPaid = ?, actualPaymentTime = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-            [1, new Date(), bookingId]
+            `UPDATE bookings SET payment_reference = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+            [referenceNumber || null, bookingId]
         );
 
-        // Fetch the updated booking to emit
-        const [updatedBookingRows] = await bookingDb.execute(
-            `SELECT userId, roomId, checkInDate, checkOutDate, totalPrice, guests, status, isPaid, assigned_room_number, early_check_in_fee, actual_check_in_time, actual_check_out_time, actualPaymentTime, lateCheckOutFee FROM bookings WHERE id = ?`,
-            [bookingId]
-        );
-        const updatedBooking = updatedBookingRows[0];
+        res.json({ message: 'Payment reference submitted for verification.' });
 
-        res.json({ message: 'Booking marked as paid successfully!' });
-
-        // Emit real-time update
-        emitRealtimeUpdate('bookingPaid', {
-            id: bookingId, // Use the original bookingId
-            userId: updatedBooking.userId,
-            roomId: updatedBooking.roomId,
-            checkInDate: updatedBooking.checkInDate,
-            checkOutDate: updatedBooking.checkOutDate,
-            totalPrice: parseFloat(updatedBooking.totalPrice),
-            guests: updatedBooking.guests,
-            isPaid: true, // Explicitly set to true
-            status: updatedBooking.status,
-            assignedRoomNumber: updatedBooking.assigned_room_number,
-            lateCheckOutFee: parseFloat(updatedBooking.lateCheckOutFee || 0), // Include late check-out fee
-            actualCheckInTime: updatedBooking.actual_check_in_time,
-            actualCheckOutTime: updatedBooking.actual_check_out_time,
-            actualPaymentTime: updatedBooking.actualPaymentTime,
+        // Optional: notify admins that a new payment reference was submitted
+        emitRealtimeUpdate('paymentReferenceSubmitted', {
+            id: bookingId,
+            userId: booking.userId,
+            paymentReference: referenceNumber || null,
             updatedAt: new Date().toISOString()
         });
 
     } catch (err) {
-        console.error("[SERVER] Error marking booking as paid:", err);
-        res.status(500).json({ error: err.message || 'Failed to mark booking as paid' });
+        console.error("[SERVER] Error submitting payment reference:", err);
+        res.status(500).json({ error: err.message || 'Failed to submit payment reference' });
     }
 });
 
@@ -2464,11 +2460,10 @@ app.get('/admin/dashboard-summary', verifyClerkToken, requireAdmin, async (req, 
         // Combine total bookings for the dashboard summary card
         const totalBookingsCombined = totalOnlineBookings + totalWalkInBookings;
 
-        // Calculate revenue from online bookings
-        // MODIFIED: Include bookings that are 'approved' AND 'isPaid = 1', OR have a 'checked_out' status.
-        // This ensures that once a booking is checked out, its revenue still counts.
+        // Calculate revenue from online bookings by summing amountPaid
+        // This supports Partial/Fully/Not Paid tri-state and avoids dependence on isPaid flag type
         const [onlineRevenueRows] = await bookingDb.execute(
-           "SELECT SUM(totalPrice) AS revenue FROM bookings WHERE (status = 'approved' AND isPaid = 1) OR status = 'checked_out'"
+           "SELECT SUM(amountPaid) AS revenue FROM bookings WHERE status != 'rejected' AND status != 'cancelled'"
         );
         const onlineRevenue = onlineRevenueRows[0].revenue || 0;
 
@@ -2587,6 +2582,7 @@ app.get('/admin/bookings', verifyClerkToken, requireAdmin, async (req, res) => {
                 b.checkOutDate,
                 b.totalPrice,
                 b.isPaid,
+                b.amountPaid,
                 b.guests,
                 b.status,
                 b.rejection_reason,
@@ -2597,6 +2593,7 @@ app.get('/admin/bookings', verifyClerkToken, requireAdmin, async (req, res) => {
                 b.actual_check_in_time,
                 b.actual_check_out_time,
                 b.actualPaymentTime,
+                b.payment_reference,
                 pr.room_number AS physical_room_number_from_pr
             FROM
                 bookings b
@@ -2711,6 +2708,17 @@ app.get('/admin/bookings', verifyClerkToken, requireAdmin, async (req, res) => {
         clerkUser?.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId)?.emailAddress ||
         clerkUser?.emailAddresses[0]?.emailAddress || 'N/A';
 
+    const parsedTotalPrice = parseFloat(booking.totalPrice);
+    const parsedAmountPaid = parseFloat(booking.amountPaid || 0);
+    let paymentStatus = 'Not Paid';
+    if (!isNaN(parsedAmountPaid)) {
+        if (parsedAmountPaid >= parsedTotalPrice) {
+            paymentStatus = 'Fully Paid';
+        } else if (parsedAmountPaid > 0) {
+            paymentStatus = 'Partial';
+        }
+    }
+
     return {
         id: booking.id,
         userId: booking.userId,
@@ -2732,8 +2740,10 @@ app.get('/admin/bookings', verifyClerkToken, requireAdmin, async (req, res) => {
         },
         checkInDate: booking.checkInDate,
         checkOutDate: booking.checkOutDate,
-        totalPrice: parseFloat(booking.totalPrice),
-        isPaid: booking.isPaid === 1,
+        totalPrice: parsedTotalPrice,
+        isPaid: paymentStatus === 'Fully Paid',
+        paymentStatus,
+        amountPaid: parsedAmountPaid,
         guests: booking.guests,
         status: booking.status,
         rejection_reason: booking.rejection_reason,
@@ -2745,6 +2755,7 @@ app.get('/admin/bookings', verifyClerkToken, requireAdmin, async (req, res) => {
         actualCheckInTime: booking.actual_check_in_time,
         actualCheckOutTime: booking.actual_check_out_time,
         actualPaymentTime: booking.actualPaymentTime,
+        paymentReference: booking.payment_reference || null,
         isApproachingCheckout,
         isOverdue
     };

@@ -340,10 +340,16 @@ const MyBookings = () => {
                                             )}
                                             <p className="text-gray-600 text-sm mb-1">
                                                 <i className="fas fa-receipt mr-2"></i>
-                                                Payment Status: <span className={`font-semibold ${booking.isPaid ? 'text-green-700' : 'text-red-700'}`}>
-                                                    {booking.isPaid ? 'Paid' : 'Not Paid'}
+                                                Payment Status: <span className={`font-semibold ${booking.paymentStatus === 'Fully Paid' ? 'text-green-700' : booking.paymentStatus === 'Partial' ? 'text-yellow-700' : 'text-red-700'}`}>
+                                                    {booking.paymentStatus || (booking.isPaid ? 'Fully Paid' : 'Not Paid')}
                                                 </span>
                                             </p>
+                                            {booking.paymentReference && (
+                                                <p className="text-gray-600 text-xs mb-1">
+                                                    <i className="fas fa-hashtag mr-2"></i>
+                                                    Reference: {booking.paymentReference}
+                                                </p>
+                                            )}
                                         </div>
                                     )}
 
