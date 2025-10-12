@@ -2407,18 +2407,14 @@ app.patch('/admin/bookings/:id/record-payment', verifyClerkToken, requireAdmin, 
         const newAmountPaid = parseFloat(current.amountPaid) + parseFloat(amountPaid);
         const totalPrice = parseFloat(current.totalPrice);
 
-        let isPaidStatus = 'Not Paid';
-        if (newAmountPaid >= totalPrice) {
-            isPaidStatus = 'Fully Paid';
-        } else if (newAmountPaid > 0) {
-            isPaidStatus = 'Partial';
-        }
+        // Keep DB isPaid as boolean (1 = fully paid, 0 otherwise); UI derives tri-state from amountPaid
+        const isPaidNumeric = newAmountPaid >= totalPrice ? 1 : 0;
 
-        console.log(`[💾] Updating booking... New AmountPaid: ${newAmountPaid}, Status: ${isPaidStatus}`);
+        console.log(`[💾] Updating booking... New AmountPaid: ${newAmountPaid}, isPaid: ${isPaidNumeric}`);
 
         await bookingDb.execute(
             'UPDATE bookings SET amountPaid = ?, isPaid = ?, actualPaymentTime = NOW() WHERE id = ?',
-            [newAmountPaid.toFixed(2), isPaidStatus, bookingId]
+            [newAmountPaid.toFixed(2), isPaidNumeric, bookingId]
         );
 
         const [updated] = await bookingDb.execute('SELECT * FROM bookings WHERE id = ?', [bookingId]);
