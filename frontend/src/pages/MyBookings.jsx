@@ -10,6 +10,8 @@ import { faStar as solidStar } from '@fortawesome/free-solid-svg-icons'; // Soli
 import { faStar as regularStar } from '@fortawesome/free-regular-svg-icons'; // Regular star for outline
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+const BANK_ACCOUNT_NUMBER = import.meta.env.VITE_BANK_ACCOUNT_NUMBER || '0000-0000-0000';
+const GCASH_NUMBER = import.meta.env.VITE_GCASH_NUMBER || '09XX-XXX-XXXX';
 
 // Star Rating Component (Helper component for MyBookings)
 const StarRating = ({ rating, setRating, isEditable }) => {
@@ -54,6 +56,10 @@ const MyBookings = () => {
     const [currentRating, setCurrentRating] = useState(0);
     const [currentComment, setCurrentComment] = useState('');
     const [ratingError, setRatingError] = useState(null);
+    // NEW: Payment modal state
+    const [showPaymentModal, setShowPaymentModal] = useState(null); // Stores booking ID
+    const [referenceNumber, setReferenceNumber] = useState('');
+    const [paymentError, setPaymentError] = useState(null);
 
     console.log("Current Logged-in Clerk User ID:", userId);
 
@@ -93,21 +99,37 @@ const MyBookings = () => {
         }
     }, [userId, isLoaded, isSignedIn, getToken]);
 
-    const handlePayNow = async (bookingId) => {
-        if (window.confirm('Are you sure you want to mark this booking as paid? (This is a simulated payment)')) {
-            try {
-                const token = await getToken();
-                await axios.patch(`${BACKEND_URL}/bookings/${bookingId}/mark-paid`, {}, {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                });
-                alert('Booking marked as paid successfully!');
-                fetchMyBookings();
-            } catch (err) {
-                console.error('Failed to mark booking as paid:', err.response?.data || err.message);
-                alert(`Failed to mark booking as paid: ${err.response?.data?.error || 'Unknown error'}`);
-            }
+    const handlePayNow = (bookingId) => {
+        setShowPaymentModal(bookingId);
+        setReferenceNumber('');
+        setPaymentError(null);
+    };
+
+    const handleClosePaymentModal = () => {
+        setShowPaymentModal(null);
+        setReferenceNumber('');
+        setPaymentError(null);
+    };
+
+    const handleSubmitPayment = async () => {
+        if (!showPaymentModal) return;
+        if (!referenceNumber || referenceNumber.trim().length < 4) {
+            setPaymentError('Please enter a valid reference number.');
+            return;
+        }
+        try {
+            const token = await getToken();
+            await axios.patch(
+                `${BACKEND_URL}/bookings/${showPaymentModal}/mark-paid`,
+                { referenceNumber },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            alert('Payment submitted! We have marked your booking as paid.');
+            handleClosePaymentModal();
+            fetchMyBookings();
+        } catch (err) {
+            console.error('Failed to mark booking as paid:', err.response?.data || err.message);
+            setPaymentError(err.response?.data?.error || 'Failed to submit payment.');
         }
     };
 
@@ -439,6 +461,73 @@ const MyBookings = () => {
                                 className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-200 ease-in-out"
                             >
                                 Submit Rating
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* NEW: Payment Modal */}
+            {showPaymentModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg p-6 shadow-xl w-full max-w-md">
+                        <h2 className="text-2xl font-playfair mb-4 text-gray-800">Payment Instructions</h2>
+                        <p className="text-gray-700 mb-4">Please transfer your payment using one of the methods below and enter your transaction reference number.</p>
+
+                        <div className="space-y-3 mb-6">
+                            <div className="border rounded-md p-3 flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-600">Bank Account</p>
+                                    <p className="font-semibold text-gray-800">{BANK_ACCOUNT_NUMBER}</p>
+                                </div>
+                                <button
+                                    onClick={() => navigator.clipboard?.writeText(BANK_ACCOUNT_NUMBER)}
+                                    className="text-blue-600 text-sm hover:underline"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <div className="border rounded-md p-3 flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-600">GCash Number</p>
+                                    <p className="font-semibold text-gray-800">{GCASH_NUMBER}</p>
+                                </div>
+                                <button
+                                    onClick={() => navigator.clipboard?.writeText(GCASH_NUMBER)}
+                                    className="text-blue-600 text-sm hover:underline"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <label htmlFor="referenceNumber" className="block text-gray-700 text-sm font-bold mb-2">
+                                Reference Number
+                            </label>
+                            <input
+                                id="referenceNumber"
+                                type="text"
+                                value={referenceNumber}
+                                onChange={(e) => setReferenceNumber(e.target.value)}
+                                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                placeholder="Enter your transaction reference number"
+                            />
+                            {paymentError && <p className="text-red-500 text-xs mt-2">{paymentError}</p>}
+                        </div>
+
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={handleClosePaymentModal}
+                                className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-200 ease-in-out"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSubmitPayment}
+                                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-200 ease-in-out"
+                            >
+                                Submit
                             </button>
                         </div>
                     </div>
