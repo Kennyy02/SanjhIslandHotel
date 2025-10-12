@@ -402,7 +402,7 @@ app.post('/api/user-profile', verifyClerkToken, uploadIdPicture.single('idPictur
             res.status(200).json({ message: 'Profile updated successfully!' });
         } else {
             // New user, create the profile
-            const insertQuery = 'INSERT INTO users (clerk_user_id, first_name, last_name, gender, birth_date, address, phone_number, email, id_picture_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+            const insertQuery = 'INSERT INTO users (clerk_user_id, first_name, last_name, gender, birth_date, address, phone_number, email, id_picture_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
             const insertParams = [authenticatedUserId, firstName, lastName, gender, birthDate, address, phoneNumber, userEmail, idPictureUrl];
             await userDb.execute(insertQuery, insertParams);
             res.status(201).json({ message: 'Profile created successfully!' });
