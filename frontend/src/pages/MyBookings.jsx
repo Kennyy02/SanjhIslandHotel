@@ -375,7 +375,7 @@ const MyBookings = () => {
                                             ${booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                                             booking.status === 'approved' ? 'bg-green-100 text-green-800' :
                                             booking.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                            booking.status === 'checked_out' ? 'bg-gray-200 text-gray-800' :
+                                            booking.status === 'checked_out' ? 'bg-blue-200 text-gray-800' :
                                             'bg-gray-100 text-gray-800'}`}>
                                             {booking.status ? booking.status.charAt(0).toUpperCase() + booking.status.slice(1).replace('_', ' ') : 'N/A'}
                                         </span>
