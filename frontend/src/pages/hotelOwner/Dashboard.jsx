@@ -1218,7 +1218,8 @@ const handleCloseVerifyPayment = () => {
                                         Extend
                                     </button>
                                 )}
-                                {booking.status === 'approved' && booking.paymentStatus !== 'Fully Paid' && (
+                                {booking.status === 'approved' && booking.paymentStatus !== 'Fully Paid' && (booking.paymentReference || booking.pendingReferenceNumber) && (
+                                    
                                     <button
                                         onClick={() => setVerifyPaymentFor(booking)}
                                         className="text-green-600 hover:text-green-900 mr-2 cursor-pointer"
