@@ -11,7 +11,7 @@ import 'react-day-picker/dist/style.css';
 import '../styles/calendar.css';
 
 // Import startOfDay for robust date normalization
-import { eachDayOfInterval, format, differenceInDays, startOfDay } from 'date-fns';
+import { format, differenceInDays, startOfDay } from 'date-fns';
 
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
@@ -157,39 +157,7 @@ const RoomDetails = () => {
                 setPhysicalRoomCount(totalPhysicalRooms);
                 setHasPhysicalRooms(totalPhysicalRooms > 0);
 
-                // Fetch all bookings for this room type
-                const bookingsResponse = await axios.get(`${BACKEND_URL}/bookings/room/${id}`);
-                const bookingsData = bookingsResponse.data;
-
-                const dailyBookedCounts = new Map(); // Map to store 'YYYY-MM-DD' -> count of physical rooms booked on that day
-
-                bookingsData.forEach(booking => {
-                    // Normalize check-in and check-out dates from booking
-                    const checkIn = startOfDay(new Date(booking.checkInDateAndTime)); // Use checkInDateAndTime
-                    const checkOut = startOfDay(new Date(booking.checkOutDateAndTime)); // Use checkOutDateAndTime
-
-                    // Get all days within the booking interval (inclusive of check-in, exclusive of check-out for night calculation,
-                    // but for marking booked days, include all full days booked)
-                    const daysInInterval = eachDayOfInterval({ start: checkIn, end: checkOut });
-
-                    daysInInterval.forEach(day => {
-                        const dayString = format(day, 'yyyy-MM-dd');
-                        dailyBookedCounts.set(dayString, (dailyBookedCounts.get(dayString) || 0) + 1);
-                    });
-                });
-
-                const fullyBookedDays = [];
-                // Only mark a day as fully booked if the number of bookings on that day
-                // equals or exceeds the total number of physical rooms for this type,
-                // AND there are actual physical rooms to begin with.
-                dailyBookedCounts.forEach((count, dayString) => {
-                    if (totalPhysicalRooms > 0 && count >= totalPhysicalRooms) {
-                        fullyBookedDays.push(new Date(dayString));
-                    }
-                });
-                setBookedDates(fullyBookedDays);
-
-            } catch (err) {
+          } catch (err) {
                 console.error("Error fetching room details or bookings:", err);
                 setError(err.message || 'Failed to fetch room details or bookings.');
             } finally {
@@ -567,7 +535,7 @@ const RoomDetails = () => {
     };
 
     const modifiers = {
-        booked: bookedDates || [],
+        booked: [],
         checkIn: selectedCheckInDate, // New modifier for check-in
         checkOut: selectedCheckOutDate, // New modifier for check-out
         selectedRange: selectedCheckInDate && selectedCheckOutDate ? { from: selectedCheckInDate, to: selectedCheckOutDate } : [],
@@ -579,7 +547,8 @@ const RoomDetails = () => {
     const disabledDays = [
         { before: startOfDay(new Date()) }, // Disable past dates
         // Only disable booked dates if there are physical rooms for this type (i.e., not entirely unavailable)
-        ...(physicalRoomCount > 0 ? bookedDates.map(date => startOfDay(date)) : []),
+        // Do not disable specific booked days; rely on physical status only
+        ...(physicalRoomCount > 0 ? [] : []),
         ...(selectedCheckInDate ? [{ before: selectedCheckInDate }] : []), // Disable dates before check-in if check-in is selected
         // If there are no physical rooms, disable all dates
         ...(physicalRoomCount === 0 ? [{ from: new Date(1900, 0, 1), to: new Date(2100, 11, 31) }] : []),
