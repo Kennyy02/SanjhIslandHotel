@@ -1129,7 +1129,9 @@ app.get('/physical-rooms/count/:roomTypeId', async (req, res) => {
     try {
         const { roomTypeId } = req.params;
         const [rows] = await roomDb.query(
-            `SELECT COUNT(*) AS count FROM room_management_db.physical_rooms WHERE room_type_id = ?`,
+            `SELECT COUNT(*) AS count
+             FROM room_management_db.physical_rooms
+             WHERE room_type_id = ? AND status = 'available'`,
             [roomTypeId]
         );
         res.json({ count: rows[0].count });
