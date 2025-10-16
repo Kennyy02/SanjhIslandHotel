@@ -2085,12 +2085,14 @@ app.patch('/admin/bookings/:id/reject-payment-reference', verifyClerkToken, requ
 
 app.post('/check-availability', async (req, res) => {
     const { roomId, checkInDate, checkOutDate, guests } = req.body;
-    console.log(`Checking availability for Room Type ID: ${roomId}, Dates: ${checkInDate} to ${checkOutDate}, Guests: ${guests}`);
+    console.log(`[AVAILABILITY] RoomType: ${roomId} | Dates: ${checkInDate} -> ${checkOutDate} | Guests: ${guests}`);
 
     try {
         // 1. Get the total number of AVAILABLE physical rooms for this roomTypeId (exclude maintenance/occupied)
         const [availableRoomsCountResult] = await roomDb.execute(
-            "SELECT COUNT(*) AS availableRooms FROM room_management_db.physical_rooms WHERE room_type_id = ? AND status = 'available'",
+            `SELECT COUNT(*) AS availableRooms
+             FROM room_management_db.physical_rooms
+             WHERE room_type_id = ? AND status = 'available'`,
             [roomId]
         );
         const availableRoomsTotal = parseInt(availableRoomsCountResult[0].availableRooms, 10) || 0;
@@ -2099,93 +2101,32 @@ app.post('/check-availability', async (req, res) => {
             return res.json({ available: false, message: 'No rooms available for this room type at the moment.' });
         }
 
-        // 2. Get the number of physical rooms booked for ANY part of the requested date range from both databases.
-        const [bookedRoomsResult] = await roomDb.execute(
-            `
-            SELECT COUNT(DISTINCT booked_room_alias) AS bookedCount
-            FROM (
-                -- Check online bookings (using physical_room_id and DATE columns)
-                SELECT b.physical_room_id AS booked_room_alias
-                FROM booking_db.bookings b
-                JOIN room_management_db.physical_rooms pr ON b.physical_room_id = pr.id
-                WHERE pr.room_type_id = ? AND pr.status = 'available'
-                AND (b.checkOutDate > ? AND b.checkInDate < ?)
-                
-                UNION
-                
-                -- Check walk-in bookings (using physicalRoomId and DATETIME columns)
-                SELECT b.physicalRoomId AS booked_room_alias
-                FROM walk_in_booking_db.bookings b
-                JOIN room_management_db.physical_rooms pr ON b.physicalRoomId = pr.id
-                WHERE pr.room_type_id = ? AND pr.status = 'available'
-                AND (b.checkOutDateAndTime > ? AND b.checkInDateAndTime < ?)
-            ) AS booked_rooms
-            `,
-            [
-                roomId, checkInDate, checkOutDate,
-                roomId, checkInDate, checkOutDate
-            ]
+        // 2) Capacity check against room type's maxGuests
+        const [roomTypeResult] = await roomDb.execute(
+            'SELECT maxGuests FROM room_management_db.rooms WHERE id = ?',
+            [roomId]
         );
-        const bookedPhysicalRooms = bookedRoomsResult[0].bookedCount;
-
-        console.log(`Available Physical Rooms for type ${roomId}: ${availableRoomsTotal}`);
-        console.log(`Physical Rooms Booked for requested dates: ${bookedPhysicalRooms}`);
-
-        // 3. Calculate actual available physical rooms
-        const availablePhysicalRooms = availableRoomsTotal - bookedPhysicalRooms;
-
-        if (availablePhysicalRooms > 0) {
-            // Further check if the room type can accommodate the number of guests
-            const [roomTypeResult] = await roomDb.execute(
-                'SELECT maxGuests FROM room_management_db.rooms WHERE id = ?',
-                [roomId]
-            );
-            const maxGuests = roomTypeResult[0]?.maxGuests;
-
-            if (guests > maxGuests) {
-                return res.json({ available: false, message: `This room type only accommodates a maximum of ${maxGuests} guests.` });
-            }
-            
-            // Now, get the available physical room numbers to display in the dropdown
-            const [availablePhysicalRoomsDetails] = await roomDb.execute(
-                `
-                SELECT id, room_number
-                FROM room_management_db.physical_rooms
-                WHERE room_type_id = ? AND status = 'available'
-                AND id NOT IN (
-                    -- Check online bookings (using physical_room_id and DATE columns)
-                    SELECT b.physical_room_id
-                    FROM booking_db.bookings b
-                    WHERE b.physical_room_id IN (SELECT id FROM room_management_db.physical_rooms WHERE room_type_id = ? AND status = 'available')
-                    AND (b.checkOutDate > ? AND b.checkInDate < ?)
-                    
-                    UNION
-                    
-                    -- Check walk-in bookings (using physicalRoomId and DATETIME columns)
-                    SELECT b.physicalRoomId
-                    FROM walk_in_booking_db.bookings b
-                    WHERE b.physicalRoomId IN (SELECT id FROM room_management_db.physical_rooms WHERE room_type_id = ? AND status = 'available')
-                    AND (b.checkOutDateAndTime > ? AND b.checkInDateAndTime < ?)
-                )
-                `,
-                [
-                    roomId,
-                    roomId, checkInDate, checkOutDate,
-                    roomId, checkInDate, checkOutDate
-                ]
-            );
-
-            return res.json({
-                available: true,
-                message: `A room is available for your selected dates. ${availablePhysicalRooms} rooms remaining.`,
-                availablePhysicalRooms: availablePhysicalRoomsDetails
-            });
-        } else {
-            res.json({ available: false, message: 'No rooms available for the selected dates.' });
+        const maxGuests = roomTypeResult[0]?.maxGuests;
+        if (maxGuests != null && guests > maxGuests) {
+            return res.json({ available: false, message: `This room type only accommodates a maximum of ${maxGuests} guests.` });
         }
 
+        // 3) Return the currently available physical rooms (by status only)
+        const [availablePhysicalRoomsDetails] = await roomDb.execute(
+            `SELECT id, room_number
+             FROM room_management_db.physical_rooms
+             WHERE room_type_id = ? AND status = 'available'`,
+            [roomId]
+        );
+
+            return res.json({
+            available: true,
+            message: 'A room is available for your selected dates.',
+            availablePhysicalRooms: availablePhysicalRoomsDetails
+        });
+
     } catch (err) {
-        console.error("Error checking availability:", err);
+        console.error('Error checking availability (status-based):', err);
         res.status(500).json({ error: err.message || 'Failed to check availability.' });
     }
 });
