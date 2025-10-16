@@ -13,17 +13,32 @@ const FeaturedDestination = () => {
   useEffect(() => {
     const fetchFeaturedRooms = async () => {
       try {
-        // Fetch all rooms initially
-        const response = await fetch(`${API_BASE_URL}/rooms`); //
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json(); //
+        // Fetch rooms list and ratings summary in parallel
+        const [roomsRes, ratingsRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/rooms`),
+          fetch(`${API_BASE_URL}/room-ratings-summary`),
+        ]);
 
-        // Filter and slice to get the first 4 rooms for "featured"
-        // You might want to add a 'isFeatured' field to your rooms table
-        // and fetch based on that in the future for more control.
-        const firstFourRooms = data.slice(0, 4);
+        if (!roomsRes.ok) {
+          throw new Error(`Rooms HTTP error! status: ${roomsRes.status}`);
+        }
+       
+        const roomsData = await roomsRes.json();
+        let ratingsSummary = {};
+        try {
+          ratingsSummary = ratingsRes && ratingsRes.ok ? await ratingsRes.json() : {};
+        } catch (_) {
+          ratingsSummary = {};
+        }
+
+        // Take the first 4 rooms for the featured section and merge rating data
+        const firstFourRooms = roomsData.slice(0, 4).map((room) => {
+          const summary = ratingsSummary?.[room.id] || {};
+          const averageRating = Number(summary.averageRating) || 0;
+          const reviewCount = Number(summary.reviewCount) || 0;
+          return { ...room, averageRating, reviewCount };
+        });
+
         setFeaturedRooms(firstFourRooms);
       } catch (error) {
         console.error("Failed to fetch featured rooms:", error);
