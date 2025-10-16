@@ -1690,6 +1690,8 @@ app.get('/admin/walk-in-bookings', verifyClerkToken, requireAdmin, async (req, r
                 room_management_db.rooms r ON wb.roomTypeId = r.id
             LEFT JOIN
                 room_management_db.physical_rooms pr ON wb.physicalRoomId = pr.id
+            WHERE
+                wb.status NOT IN ('Checked-Out','Cancelled')
             ORDER BY
                 wb.checkInDateAndTime DESC
         `);
@@ -1769,7 +1771,6 @@ app.patch('/admin/bookings/walk-in/:id/cancel', verifyClerkToken, requireAdmin, 
         res.status(500).json({ error: error.message || 'Failed to cancel walk-in booking.' });
     }
 });
-
 
 // ====================================================================
 // =========     ONLINE BOOKING MANAGEMENT ROUTES        ===================
@@ -3525,8 +3526,8 @@ app.get('/admin/checked-out-bookings', verifyClerkToken, requireAdmin, async (re
                 discount_type: null, // Set to null
                 discount_amount: null, // Set to null or 0
                 guests: row.guests,
-                // Nights will be computed on the frontend for online bookings
-                nights: null, // Set to null here, will be computed on frontend
+                // Compute nights on backend for consistency in history details
+                nights: Math.max(0, differenceInDays(new Date(row.checkOutDate), new Date(row.checkInDate))),
                 firstName: row.first_name,
                 lastName: row.last_name,
                 email: row.email, // Mapped email
@@ -3594,7 +3595,10 @@ app.get('/admin/checked-out-bookings', verifyClerkToken, requireAdmin, async (re
                 discount_type: row.discount_type,
                 discount_amount: row.discount_amount,
                 guests: row.guests,
-                nights: row.nights, // Mapped nights
+                // Use provided nights; if unavailable, compute from dates
+                nights: (row.nights !== null && row.nights !== undefined)
+                  ? row.nights
+                  : Math.max(0, differenceInDays(new Date(row.checkOutDate), new Date(row.checkInDate))),
                 email: row.email, // Mapped email
                 phone: row.phone, // Mapped phone
                 idPictureUrl: row.idPictureUrl,
