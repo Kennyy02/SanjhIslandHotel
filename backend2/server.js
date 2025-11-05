@@ -22,15 +22,33 @@ const PORT = process.env.PORT || 3301;
 app.set('trust proxy', 1);
 
 // Flexible CORS: allow multiple origins via CORS_ORIGINS env (comma-separated)
-const allowedOrigins = (process.env.CORS_ORIGINS || 'https://sanjhislandhotel.up.railway.app')
+// Always include known frontend origins as safe defaults
+const defaultAllowedOrigins = [
+  'https://sanjhislandhotel.up.railway.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+const envAllowedOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
+const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envAllowedOrigins]));
+
 
 const corsConfig = {
   origin: allowedOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'X-Socket-Id',
+    'X-Clerk-Session-Id',
+    'X-Clerk-Request-Id',
+    'X-Clerk-Auth-Token',
+    'X-Clerk-Active-Session',
+    'X-Clerk-ClientId',
+  ],
   credentials: true,
   optionsSuccessStatus: 204,
 };
@@ -381,6 +399,15 @@ app.use((req, res, next) => {
         if (!isDbHealthy(feedbackDb)) {
             console.error('[HealthCheck] Feedback DB not available.');
             return res.status(500).json({ message: 'Testimonials service unavailable. Please try again later.' });
+        }
+        return next();
+    }
+
+  // Routes that only need the booking DB
+    if (path.startsWith('/bookings/user')) {
+        if (!isDbHealthy(bookingDb)) {
+            console.error('[HealthCheck] Booking DB not available.');
+            return res.status(500).json({ message: 'Bookings service unavailable. Please try again later.' });
         }
         return next();
     }
@@ -1663,6 +1690,8 @@ app.get('/admin/walk-in-bookings', verifyClerkToken, requireAdmin, async (req, r
                 room_management_db.rooms r ON wb.roomTypeId = r.id
             LEFT JOIN
                 room_management_db.physical_rooms pr ON wb.physicalRoomId = pr.id
+            WHERE
+                wb.status NOT IN ('Checked-Out','Cancelled')
             ORDER BY
                 wb.checkInDateAndTime DESC
         `);
@@ -1705,6 +1734,43 @@ app.get('/admin/walk-in-bookings', verifyClerkToken, requireAdmin, async (req, r
     }
 });
 
+// NEW: Admin cancel endpoint for walk-in bookings
+app.patch('/admin/bookings/walk-in/:id/cancel', verifyClerkToken, requireAdmin, async (req, res) => {
+    const bookingId = req.params.id;
+    try {
+        // Only allow cancel for statuses that are not already Checked-Out/Cancelled
+        const [rows] = await walkInBookingDb.execute(
+            `SELECT id, status, physicalRoomId FROM bookings WHERE id = ?`,
+            [bookingId]
+        );
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Walk-in booking not found.' });
+        }
+        const booking = rows[0];
+        if (booking.status === 'Checked-Out' || booking.status === 'Cancelled') {
+            return res.status(400).json({ error: `Cannot cancel booking in status '${booking.status}'.` });
+        }
+
+        await walkInBookingDb.execute(
+            `UPDATE bookings SET status = 'Cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+            [bookingId]
+        );
+
+        // Free the physical room if assigned
+        if (booking.physicalRoomId) {
+            await roomDb.execute(
+                `UPDATE physical_rooms SET status = 'available', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+                [booking.physicalRoomId]
+            );
+        }
+
+        emitRealtimeUpdate('walkInBookingCancelled', { id: bookingId, status: 'Cancelled' });
+        res.json({ message: `Walk-in booking ${bookingId} cancelled successfully.` });
+    } catch (error) {
+        console.error('Error cancelling walk-in booking:', error);
+        res.status(500).json({ error: error.message || 'Failed to cancel walk-in booking.' });
+    }
+});
 
 // ====================================================================
 // =========     ONLINE BOOKING MANAGEMENT ROUTES        ===================
@@ -2464,7 +2530,8 @@ app.patch('/bookings/:id/cancel', verifyClerkToken, async (req, res) => {
     const { userId } = req.auth;
 
     try {
-
+    // Start transaction to ensure atomic update + possible room release
+        await bookingDb.beginTransaction();
         const [bookingRows] = await bookingDb.execute(
             `SELECT physical_room_id, userId, status FROM bookings WHERE id = ? FOR UPDATE`,
             [bookingId]
@@ -2541,17 +2608,12 @@ app.patch('/bookings/:id/cancel', verifyClerkToken, async (req, res) => {
 
     } catch (err) {
         // Rollback the transaction if any error occurs during the process
-        if (bookingDb) {
-            await bookingDb.rollback();
-        }
+        try { await bookingDb.rollback(); } catch (_) {}
         console.error(`Error cancelling booking ${bookingId}:`, err);
         // Send a 500 status with an informative error message
         res.status(500).json({ error: err.message || 'Failed to cancel booking' });
     } finally {
-        // IMPORTANT: ALWAYS release connections back to their respective pools
-        // This ensures connections are reused and prevents resource leaks.
-        if (bookingDb) bookingDb.release();
-        if (roomDb) roomDb.release();
+        // Using single connections (createConnection), nothing to release here
     }
 });
 
@@ -2789,6 +2851,8 @@ app.get('/admin/bookings', verifyClerkToken, requireAdmin, async (req, res) => {
                 room_management_db.physical_rooms pr ON b.physical_room_id = pr.id
             LEFT JOIN
                 payment_references prf ON prf.booking_id = b.id AND prf.status = 'pending'
+            WHERE
+                b.status NOT IN ('checked_out','cancelled')
             ORDER BY
                 b.id DESC`
         );
@@ -3404,7 +3468,8 @@ app.get('/admin/checked-out-bookings', verifyClerkToken, requireAdmin, async (re
 
         // Fetch Online Bookings
         if (type === 'all' || type === 'online') {
-            const baseQueryOnline = `b.status = 'checked_out'`;
+            // Include both checked_out and cancelled bookings in history for online
+            const baseQueryOnline = `b.status IN ('checked_out','cancelled')`;
             const searchSqlOnline = search
                 ? `AND (u.first_name LIKE ? OR u.last_name LIKE ? OR r.roomType LIKE ?)`
                 : '';
@@ -3461,8 +3526,8 @@ app.get('/admin/checked-out-bookings', verifyClerkToken, requireAdmin, async (re
                 discount_type: null, // Set to null
                 discount_amount: null, // Set to null or 0
                 guests: row.guests,
-                // Nights will be computed on the frontend for online bookings
-                nights: null, // Set to null here, will be computed on frontend
+                // Compute nights on backend for consistency in history details
+                nights: Math.max(0, differenceInDays(new Date(row.checkOutDate), new Date(row.checkInDate))),
                 firstName: row.first_name,
                 lastName: row.last_name,
                 email: row.email, // Mapped email
@@ -3479,7 +3544,8 @@ app.get('/admin/checked-out-bookings', verifyClerkToken, requireAdmin, async (re
 
         // Fetch Walk-In Bookings (with corrected aliases)
         if (type === 'all' || type === 'walk-in') {
-            const baseQueryWalkIn = `wb.status = 'Checked-Out'`;
+            // Include both Checked-Out and Cancelled in history for walk-in
+            const baseQueryWalkIn = `wb.status IN ('Checked-Out','Cancelled')`;
             const searchSqlWalkIn = search
                 ? `AND (wb.firstName LIKE ? OR wb.lastName LIKE ? OR r.roomType LIKE ?)`
                 : '';
@@ -3529,7 +3595,10 @@ app.get('/admin/checked-out-bookings', verifyClerkToken, requireAdmin, async (re
                 discount_type: row.discount_type,
                 discount_amount: row.discount_amount,
                 guests: row.guests,
-                nights: row.nights, // Mapped nights
+                // Use provided nights; if unavailable, compute from dates
+                nights: (row.nights !== null && row.nights !== undefined)
+                  ? row.nights
+                  : Math.max(0, differenceInDays(new Date(row.checkOutDate), new Date(row.checkInDate))),
                 email: row.email, // Mapped email
                 phone: row.phone, // Mapped phone
                 idPictureUrl: row.idPictureUrl,

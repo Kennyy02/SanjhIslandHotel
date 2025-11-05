@@ -47,7 +47,11 @@ const navigate = useNavigate();
           {/* Assuming roomType is the name equivalent from your DB */}
           <p className='font-playfair text-xl font-medium text-gray-800'>{room.roomType}</p>
           <div className='flex items-center gap-1'>
+
             <img src={assets.starIconFilled} alt="star-icon" /> {room.averageRating}
+
+            <img src={assets.starIconFilled} alt="star-icon" />{room.averageRating}
+
           </div>
         </div>
         <div className='flex items-center gap-1 text-sm'>
