@@ -58,6 +58,19 @@ app.options('*', cors(corsConfig));
 
 app.use(express.json());
 
+const transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_SERVICE_HOST,
+    port: process.env.EMAIL_SERVICE_PORT,
+    secure: process.env.EMAIL_SERVICE_PORT === '465', // Use 'true' for 465, 'false' for other ports like 587
+    auth: {
+        user: process.env.EMAIL_SERVICE_USER,
+        pass: process.env.EMAIL_SERVICE_PASS
+    },
+    // Optional: for debugging email sending
+    logger: true, // logs email send attempts to console
+    debug: true // more detailed debug output
+});
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
@@ -75,18 +88,6 @@ const idPictureStorage = multer.diskStorage({
     }
 });
 
-const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_SERVICE_HOST,
-    port: process.env.EMAIL_SERVICE_PORT,
-    secure: process.env.EMAIL_SERVICE_PORT === '465', // Use 'true' for 465, 'false' for other ports like 587
-    auth: {
-        user: process.env.EMAIL_SERVICE_USER,
-        pass: process.env.EMAIL_SERVICE_PASS
-    },
-    // Optional: for debugging email sending
-    logger: true, // logs email send attempts to console
-    debug: true // more detailed debug output
-});
 
 const uploadIdPicture = multer({
     storage: idPictureStorage,
@@ -166,7 +167,7 @@ let feedbackDb;
 
 async function initDbs() {
     try {
-        roomDb = await mysql.createConnection({
+        roomDb = mysql.createPool({
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
@@ -175,7 +176,7 @@ async function initDbs() {
         });
         console.log('Connected to Room Management Database (room_management_db)');
 
-        bookingDb = await mysql.createConnection({
+        bookingDb = mysql.createPool({
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
@@ -184,7 +185,7 @@ async function initDbs() {
         });
         console.log('Connected to Booking Database (booking_db)');
 
-        userDb = await mysql.createConnection({
+        userDb = mysql.createPool({
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
@@ -193,7 +194,7 @@ async function initDbs() {
         });
         console.log('Connected to User Database (user_db)');
 
-        feedbackDb = await mysql.createConnection({
+        feedbackDb = mysql.createPool({
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
@@ -202,7 +203,7 @@ async function initDbs() {
         });
         console.log('Connected to Feedback Database (feedback_db)');
 
-         walkInBookingDb = await mysql.createConnection({
+         walkInBookingDb = mysql.createPool({
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
@@ -219,6 +220,18 @@ async function initDbs() {
 }
 
 initDbs();
+setInterval(async () => {
+  try {
+    await roomDb.query('SELECT 1');
+    await bookingDb.query('SELECT 1');
+    await userDb.query('SELECT 1');
+    await feedbackDb.query('SELECT 1');
+    await walkInBookingDb.query('SELECT 1');
+  } catch (err) {
+    console.error('DB keep-alive failed:', err.message);
+  }
+}, 1000 * 60 * 5); // every 5 minutes
+
 
 
 // Ensure auxiliary tables exist (e.g., payment references)
