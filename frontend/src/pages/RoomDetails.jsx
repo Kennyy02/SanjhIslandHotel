@@ -574,7 +574,7 @@ const RoomDetails = () => {
     const roomPriceForStay = numberOfNights * room.pricePerNight;
 
     return (
-        <div className="pt-28 px-4 md:px-8 lg:px-20 pb-12 flex flex-col lg:flex-row gap-10 mt-10">
+        <div className="pt-28 px-4 md:px-8 lg:px-10 pb-12 flex flex-col lg:flex-row gap-1 mt-10">
             {/* Left Column: Room Images & Info */}
             <div className="flex-1">
                 {mainImage && (
@@ -584,7 +584,7 @@ const RoomDetails = () => {
                         className="w-133 h-80 object-cover rounded-lg shadow-md mb-6"
                     />
                 )}
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-1 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
                     {room.images && room.images.map((image, index) => (
                         <img
                             key={index}
@@ -613,7 +613,7 @@ const RoomDetails = () => {
 
                 <div className="mb-6">
                     <h2 className="text-2xl font-playfair text-gray-800 mb-3">Amenities</h2>
-                    <ul className="grid grid-cols-2 gap-x-2 gap-y-3 text-gray-700">
+                    <ul className="grid grid-cols-2 gap-3 text-gray-700">
                         {Array.isArray(room.amenities) && room.amenities.map((amenity, index) => (
                             <li key={index} className="flex items-center gap-2">
                                 {facilityIcons[amenity] && <img src={facilityIcons[amenity]} alt={amenity} className="h-5 w-5" />}
