@@ -581,7 +581,7 @@ const RoomDetails = () => {
                     <img
                         src={mainImage}
                         alt={room.roomType}
-                        className="w-133 h-80 object-cover rounded-lg shadow-md mb-6"
+                        className="w-full h-80 object-cover rounded-lg shadow-md mb-6"
                     />
                 )}
                 <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
@@ -590,7 +590,7 @@ const RoomDetails = () => {
                             key={index}
                             src={image}
                             alt={`Room view ${index + 1}`}
-                            className="w-50 h-24 object-cover rounded-md cursor-pointer hover:opacity-80 transition-opacity"
+                            className="w-full h-24 object-cover rounded-md cursor-pointer hover:opacity-80 transition-opacity"
                             onClick={() => setMainImage(image)}
                         />
                     ))}
@@ -616,8 +616,8 @@ const RoomDetails = () => {
                     <ul className="grid grid-cols-2 gap-3 text-gray-700">
                         {Array.isArray(room.amenities) && room.amenities.map((amenity, index) => (
                             <li key={index} className="flex items-center gap-2">
-                                {facilityIcons[amenity] && <img src={facilityIcons[amenity]} alt={amenity} className="h-5 w-5" />}
-                                <span>{amenity}</span>
+                                {facilityIcons[amenity] && <img src={facilityIcons[amenity]} alt={amenity} className="h-5 w-5 flex-shrink-0" />}
+                                <span className="flex-1">{amenity}</span>
                             </li>
                         ))}
                     </ul>
