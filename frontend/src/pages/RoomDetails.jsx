@@ -584,13 +584,13 @@ const RoomDetails = () => {
                         className="w-133 h-80 object-cover rounded-lg shadow-md mb-6"
                     />
                 )}
-                <div className="grid grid-cols-4 gap-2 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-2 mb-6">
                     {room.images && room.images.map((image, index) => (
                         <img
                             key={index}
                             src={image}
                             alt={`Room view ${index + 1}`}
-                            className="w-full h-24 object-cover rounded-md cursor-pointer hover:opacity-80 transition-opacity"
+                            className="w-100 h-24 object-cover rounded-md cursor-pointer hover:opacity-80 transition-opacity"
                             onClick={() => setMainImage(image)}
                         />
                     ))}
