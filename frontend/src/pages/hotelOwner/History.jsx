@@ -7,7 +7,9 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const History = () => {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const [historyData, setHistoryData] = useState([]);
+  const [rejectedBookings, setRejectedBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingRejected, setLoadingRejected] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -95,9 +97,44 @@ const History = () => {
     }
   }, [isLoaded, isSignedIn, getToken, currentPage, searchTerm, filterType]);
 
+  const fetchRejectedBookings = useCallback(async () => {
+    if (!isLoaded || !isSignedIn) {
+      setLoadingRejected(false);
+      return;
+    }
+
+    setLoadingRejected(true);
+    try {
+      const token = await getToken();
+      if (!token) {
+        setLoadingRejected(false);
+        return;
+      }
+
+      // Fetch all bookings and filter for rejected status
+      const response = await axios.get(`${BACKEND_URL}/admin/bookings`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      // Filter for rejected bookings
+      const rejected = (response.data.bookings || []).filter(
+        (booking) => booking.status === 'rejected'
+      );
+      setRejectedBookings(rejected);
+
+    } catch (err) {
+      console.error('Failed to fetch rejected bookings:', err.response?.data || err.message);
+    } finally {
+      setLoadingRejected(false);
+    }
+  }, [isLoaded, isSignedIn, getToken]);
+
   useEffect(() => {
     fetchHistoryBookings();
-  }, [fetchHistoryBookings]);
+    fetchRejectedBookings();
+  }, [fetchHistoryBookings, fetchRejectedBookings]);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -347,6 +384,76 @@ const History = () => {
         </button>
       </div>
 
+      {/* Rejected Bookings Table */}
+      <h2 className="text-2xl font-playfair mb-4 text-gray-800 mt-10">Rejected Bookings</h2>
+      <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto mb-10">
+        {loadingRejected ? (
+          <p className="text-center py-4">Loading rejected bookings...</p>
+        ) : rejectedBookings.length === 0 ? (
+          <p className="text-center py-4 text-gray-500">No rejected bookings</p>
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room Type</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room No.</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in Date</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-out Date</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Price</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rejection Reason</th>
+                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {rejectedBookings.map((booking) => {
+                // Handle both data structures (online bookings have user/room objects, walk-in have direct properties)
+                const userName = booking.user?.firstName 
+                  ? `${booking.user.firstName} ${booking.user.lastName}` 
+                  : booking.firstName 
+                    ? `${booking.firstName} ${booking.lastName}` 
+                    : 'N/A';
+                const roomType = booking.room?.roomType || booking.roomType || 'N/A';
+                
+                return (
+                  <tr key={booking.id} className="bg-red-50">
+                    <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                      {userName}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{roomType}</td>
+                    <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{booking.physicalRoomNumber || 'N/A'}</td>
+                    <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                      {parseMySQLDateTimeToLocal(booking.checkInDate)?.toLocaleDateString() || 'N/A'}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                      {parseMySQLDateTimeToLocal(booking.checkOutDate)?.toLocaleDateString() || 'N/A'}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">₱{parseFloat(booking.totalPrice || 0).toFixed(2)}</td>
+                    <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                      <span className="px-2 inline-flex text-xs leading-5 rounded-full bg-red-100 text-red-800">
+                        Rejected
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-xs text-gray-900 max-w-xs">
+                      <span className="text-red-700">{booking.rejectionReason || 'No reason provided'}</span>
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-center text-xs font-medium">
+                      <button
+                        onClick={() => handleShowDetails(booking)}
+                        className="text-indigo-600 hover:text-indigo-900 mr-2 cursor-pointer"
+                      >
+                        Show Details
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
       {/* Booking Details Modal */}
       {showDetailsModal && selectedBookingDetails && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
@@ -435,6 +542,14 @@ const History = () => {
                 <p><strong>Discount Type:</strong> {selectedBookingDetails.discount_type || 'N/A'}</p>
                 <p><strong>Discount Amount:</strong> ₱{parseFloat(selectedBookingDetails.discount_amount || 0).toFixed(2)}</p>
               </div>
+
+              {/* Rejection Details (if applicable) */}
+              {selectedBookingDetails.status === 'rejected' && selectedBookingDetails.rejectionReason && (
+                <div className="border p-4 rounded-lg border-red-300 bg-red-50">
+                  <h4 className="font-semibold text-lg mb-2 text-red-700">Rejection Details</h4>
+                  <p><strong>Rejection Reason:</strong> <span className="text-red-700">{selectedBookingDetails.rejectionReason}</span></p>
+                </div>
+              )}
 
             </div>
             <div className="flex justify-end mt-6">
