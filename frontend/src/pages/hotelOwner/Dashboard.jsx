@@ -1068,9 +1068,9 @@ const handleCloseVerifyPayment = () => {
         return <div className="p-8 text-center text-red-500">Error: {error}</div>;
     }
 
-    // Filter out checked-out online bookings
+    // Filter out checked-out and rejected online bookings (rejected bookings go to History)
     const activeOnlineBookings = (dashboardData.bookings || []).filter(
-        (booking) => booking.status !== 'checked_out'
+        (booking) => booking.status !== 'checked_out' && booking.status !== 'rejected'
     );
 
     // Filter out checked-out walk-in bookings
