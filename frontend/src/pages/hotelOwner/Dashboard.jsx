@@ -1082,42 +1082,42 @@ const handleCloseVerifyPayment = () => {
 
     return (
         <div className="p-6 md:p-8 lg:p-10 bg-gray-50 min-h-screen">
-            <h1 className="text-3xl md:text-3xl font-playfair mb-8 text-gray-800">Admin Dashboard</h1>
+            <h1 className="text-4xl md:text-4xl font-playfair mb-8 text-gray-800">Admin Dashboard</h1>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                 <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                     <div>
-                        <p className="text-m text-gray-500">Total Users</p>
-                        <p className="text-2xl font-bold text-gray-900">{dashboardData.totalUsers}</p>
+                        <p className="text-lg text-gray-500">Total Users</p>
+                        <p className="text-3xl font-bold text-gray-900">{dashboardData.totalUsers}</p>
                     </div>
                     <i className="fas fa-users text-4xl text-blue-500"></i>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                     <div>
-                        <p className="text-m text-gray-500">Total Rooms</p>
-                        <p className="text-2xl font-bold text-gray-900">{dashboardData.totalRooms}</p>
+                        <p className="text-lg text-gray-500">Total Rooms</p>
+                        <p className="text-3xl font-bold text-gray-900">{dashboardData.totalRooms}</p>
                     </div>
                     <i className="fas fa-bed text-4xl text-green-500"></i>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                     <div>
-                        <p className="text-m text-gray-500">Total Bookings</p>
-                        <p className="text-2xl font-bold text-gray-900">{dashboardData.totalBookings}</p>
+                        <p className="text-lg text-gray-500">Total Bookings</p>
+                        <p className="text-3xl font-bold text-gray-900">{dashboardData.totalBookings}</p>
                     </div>
-                    <i className="fas fa-book-open text-3xl text-purple-500"></i>
+                    <i className="fas fa-book-open text-4xl text-purple-500"></i>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                     <div>
-                        <p className="text-m text-gray-500">Total Revenue</p>
-                        <p className="text-2xl font-bold text-gray-900">₱{dashboardData.totalRevenue}</p>
+                        <p className="text-lg text-gray-500">Total Revenue</p>
+                        <p className="text-3xl font-bold text-gray-900">₱{dashboardData.totalRevenue}</p>
                     </div>
-                    <i className="fas fa-peso-sign text-3xl text-yellow-500"></i>
+                    <i className="fas fa-peso-sign text-4xl text-yellow-500"></i>
                 </div>
             </div>
 
             {/* Bookings Section */}
-            <h2 className="text-lg font-playfair mb-4 text-gray-800">Recent Online Bookings</h2>
+            <h2 className="text-2xl font-playfair mb-4 text-gray-800">Recent Online Bookings</h2>
 <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto mb-10">
     {loading ? (
         <p className="text-center py-4">Loading bookings...</p>
@@ -1125,16 +1125,16 @@ const handleCloseVerifyPayment = () => {
         <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
                 <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room Type</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room No.</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in Date/Time</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Price</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paid</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Ref</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">User</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Room Type</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Room No.</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Check-in Date/Time</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Total Price</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Paid</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Payment Ref</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-2 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -1162,21 +1162,21 @@ const handleCloseVerifyPayment = () => {
                                     {booking.user.firstName} {booking.user.lastName}
                                 </button>
                             </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{booking.room.roomType}</td>
-                            <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{booking.physicalRoomNumber || 'N/A'}</td> {/* Changed to physicalRoomNumber */}
-                            <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{formatLocalDateTime(booking.actualCheckInTime || booking.checkInDate)}</td>
-                            <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">₱{booking.totalPrice.toFixed(2)}</td>
-                            <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">₱{(Math.max(0, parseFloat(booking.totalPrice || 0) - parseFloat(booking.amountPaid || 0))).toFixed(2)}</td>
-                            <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                                <span className={`px-2 inline-flex text-xs leading-5 rounded-full ${
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{booking.room.roomType}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{booking.physicalRoomNumber || 'N/A'}</td> {/* Changed to physicalRoomNumber */}
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{formatLocalDateTime(booking.actualCheckInTime || booking.checkInDate)}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">₱{booking.totalPrice.toFixed(2)}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">₱{(Math.max(0, parseFloat(booking.totalPrice || 0) - parseFloat(booking.amountPaid || 0))).toFixed(2)}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                <span className={`px-2 inline-flex text-sm leading-5 rounded-full ${
                                    booking.paymentStatus === 'Fully Paid' ? 'bg-green-100 text-green-800' : booking.paymentStatus === 'Partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
                                 }`}>
                                     {booking.paymentStatus || (booking.isPaid ? 'Fully Paid' : 'Not Paid')}
                                 </span>
                             </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{booking.paymentReference || '—'}</td>
-                            <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                                <span className={`px-2 inline-flex text-xs leading-5  rounded-full
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{booking.paymentReference || '—'}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                <span className={`px-2 inline-flex text-sm leading-5  rounded-full
                                     ${isOverdue ? 'bg-red-400 text-white' : // Overdue
                                     booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                                     booking.status === 'approved' ? 'bg-blue-100 text-blue-800' :
@@ -1187,10 +1187,10 @@ const handleCloseVerifyPayment = () => {
                                     {isOverdue ? 'OVERDUE' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                                 </span>
                                 {booking.isApproachingCheckout && booking.status === 'approved' && !isOverdue && ( // Only show if not already overdue
-                                    <p className="text-yellow-600 text-xs mt-1 ">Approaching Checkout!</p>
+                                    <p className="text-yellow-600 text-sm mt-1 ">Approaching Checkout!</p>
                                 )}
                             </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-right text-xs font-medium">
+                            <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
                                 {booking.status === 'pending' && (
                                     <>
                                         <button
@@ -1255,7 +1255,7 @@ const handleCloseVerifyPayment = () => {
                                 )}
                             </td>
 
-                            <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                         <button
                                             onClick={() => handleShowDetails(booking)}
                                             className="text-indigo-600 hover:text-indigo-900 mr-2 cursor-pointer"
@@ -1283,7 +1283,7 @@ const handleCloseVerifyPayment = () => {
 </div>
 
                             {/* NEW: Recent Walk-in Bookings Section */}
-                            <h2 className="text-lg font-playfair mb-4 text-gray-800">Recent Walk-in Bookings</h2>
+                            <h2 className="text-2xl font-playfair mb-4 text-gray-800">Recent Walk-in Bookings</h2>
                             <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto mb-10">
                                 {loading ? (
                                     <p className="text-center py-4">Loading walk-in bookings...</p>
@@ -1291,17 +1291,17 @@ const handleCloseVerifyPayment = () => {
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-50">
                                             <tr>
-                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Name</th>
-                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room Type</th>
-                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room No.</th>
-                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-out Date/Time</th>
-                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nights</th> {/* ADDED THIS HEADER */}
-                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paid Status</th>
-                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
-                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking Status</th>
-                                                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                                                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt</th>
+                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Guest Name</th>
+                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Room Type</th>
+                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Room No.</th>
+                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Check-out Date/Time</th>
+                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Nights</th> {/* ADDED THIS HEADER */}
+                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Paid Status</th>
+                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Booking Status</th>
+                                                <th className="px-4 py-2 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                                <th className="px-4 py-2 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">Receipt</th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
@@ -1326,8 +1326,8 @@ const handleCloseVerifyPayment = () => {
 
                                                 return (
                                                     <tr key={booking.id} className={`${rowBackgroundColorClass}`}>
-                                                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{booking.id}</td>
-                                                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{booking.id}</td>
+                                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                                             <span
                                                                 className="text-indigo-600 hover:text-indigo-900 cursor-pointer"
                                                                 onClick={() => handleViewWalkInUserDetails(booking.id)}
@@ -1335,18 +1335,18 @@ const handleCloseVerifyPayment = () => {
                                                                 {booking.firstName} {booking.lastName}
                                                             </span>
                                                         </td>
-                                                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{booking.roomType}</td>
-                                                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{booking.physicalRoomNumber || 'N/A'}</td> {/* Displaying physicalRoomNumber */}
-                                                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{booking.roomType}</td>
+                                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{booking.physicalRoomNumber || 'N/A'}</td> {/* Displaying physicalRoomNumber */}
+                                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                                             
                                                              {formatWalkInCheckOut(booking)}
                                                         </td>
-                                                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                                             {/* Display nights for walk-ins */}
                                                             {booking.nights || 'N/A'}
                                                         </td>
-                                                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                                                            <span className={`px-2 inline-flex text-xs leading-5 rounded-full
+                                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                                            <span className={`px-2 inline-flex text-sm leading-5 rounded-full
                                                                 ${booking.isPaid === 'Fully Paid' ? 'bg-green-100 text-green-800' :
                                                                 booking.isPaid === 'Partial' ? 'bg-yellow-100 text-yellow-800' :
                                                                 'bg-red-100 text-red-800'}`}>
@@ -1354,9 +1354,9 @@ const handleCloseVerifyPayment = () => {
                                                             </span>
                                                         </td>
 
-                                                        <td className="px-4 py-2 whitespace-nowrap text-xs text-red-600 ">₱{balance.toFixed(2)}</td>
-                                                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                                                            <span className={`px-2 inline-flex text-xs leading-5 rounded-full
+                                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-red-600 ">₱{balance.toFixed(2)}</td>
+                                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                                            <span className={`px-2 inline-flex text-sm leading-5 rounded-full
                                                                 ${checkOutDateTime < now && booking.status !== 'Checked-Out' ? 'bg-red-400 text-white' : // Overdue
                                                                 booking.status === 'Checked-In' ? 'bg-green-100 text-green-800' : // Green for Checked-In
                                                                 booking.status === 'Checked-Out' ? 'bg-gray-100 text-gray-800' :   // Gray for Checked-Out
@@ -1365,7 +1365,7 @@ const handleCloseVerifyPayment = () => {
                                                                 {checkOutDateTime < now && booking.status !== 'Checked-Out' ? 'OVERDUE' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                                                             </span>
                                                         </td>
-                                                        <td className="px-4 py-2 whitespace-nowrap text-right text-xs font-medium">
+                                                        <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
 
                                                             {balance > 0 && (
                                                                 <button
@@ -1392,7 +1392,7 @@ const handleCloseVerifyPayment = () => {
                                                                 </button>
                                                             )}
                                                         </td>
-                                                        <td className="px-4 py-2 whitespace-nowrap text-right text-xs font-medium">
+                                                        <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
                                                             {parseFloat(booking.amountPaid || 0) > 0 && (
                                                                 <button
                                                                     onClick={() => handlePrintWalkInReceipt(booking)}
@@ -1402,7 +1402,7 @@ const handleCloseVerifyPayment = () => {
                                                                 </button>
                                                             )}
                                                         </td>
-                                                        <td className="px-4 py-2 whitespace-nowrap text-right text-xs font-medium">
+                                                        <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
                                                         <button
                                                                         onClick={() => handleShowWalkInDetails(booking)}
                                                                         className="text-indigo-600 hover:text-indigo-900 mr-2 cursor-pointer"
