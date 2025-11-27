@@ -1750,7 +1750,7 @@ const handleCloseVerifyPayment = () => {
 
 
             {/* Users Section */}
-            <h2 className="text-lg font-playfair mb-4 text-gray-800">Registered Users</h2>
+            <h2 className="text-2xl font-playfair mb-4 text-gray-800">Registered Users</h2>
             <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
                 {loading ? (
                     <p className="text-center py-4">Loading users...</p>
@@ -1758,23 +1758,23 @@ const handleCloseVerifyPayment = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
+                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Gender</th>
+                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Created At</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {(dashboardData.users || []).map((user) => ( // Added defensive check
                                 <tr key={user.id}>
-                                    <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{user.id}</td>
-                                    <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{user.firstName} {user.lastName}</td>
-                                    <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{user.phone_number || 'N/A'}</td>
-                                    <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{user.email}</td>
-                                    <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">{user.gender}</td>
-                                    <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{user.id}</td>
+                                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{user.firstName} {user.lastName}</td>
+                                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{user.phone_number || 'N/A'}</td>
+                                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{user.email}</td>
+                                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{user.gender}</td>
+                                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                         {new Date(user.createdAt).toLocaleDateString()}
                                     </td>
                                 </tr>
