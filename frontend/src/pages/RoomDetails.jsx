@@ -581,7 +581,7 @@ const RoomDetails = () => {
                     <img
                         src={mainImage}
                         alt={room.roomType}
-                        className="w-223 h-100 object-cover rounded-lg shadow-md mb-6"
+                        className="w-210 h-100 object-cover rounded-lg shadow-md mb-6"
                     />
                 )}
                 <div className="grid grid-cols-2 gap-2 mb-6">
